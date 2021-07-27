@@ -14,6 +14,7 @@ using Lexxys.Xml;
 
 namespace State.Statecharts4
 {
+	using Statecharts;
 
 	public class Statechart<T>
 	{
@@ -43,7 +44,7 @@ namespace State.Statecharts4
 		/// <summary>
 		/// Checks whether the <see cref="Statechart{T}"/> has been started.
 		/// </summary>
-		public bool IsNotStarted => Current == null;
+		public bool IsStarted => Current != null;
 
 		/// <summary>
 		/// Indicates that the <see cref="Statechart{T}"/> is in progress state (i.e. started and not finished)
@@ -64,11 +65,26 @@ namespace State.Statecharts4
 		/// </summary>
 		public virtual event Action<T, Statechart<T>> ChartFinish;
 
+		/// <summary>
+		/// Executes when the <see cref="State{T}"/> object is trying to become a corrent state in the <see cref="Statechart{T}"/>.
+		/// </summary>
 		public virtual event Action<T, State<T>, Transition<T>, Statechart<T>> StateEnter;
+		/// <summary>
+		/// Executes when the <see cref="State{T}"/> object became a current state.
+		/// </summary>
 		public virtual event Action<T, State<T>, Transition<T>, Statechart<T>> StateEntered;
+		/// <summary>
+		/// Executes when instead of setting as a current state, the <see cref="State{T}"/> object switches to another one by condition.
+		/// </summary>
 		public virtual event Action<T, State<T>, Transition<T>, Statechart<T>> StatePassthrough;
+		/// <summary>
+		/// Executes when the <see cref="State{T}"/> object exits the current state condition.
+		/// </summary>
 		public virtual event Action<T, State<T>, Transition<T>, Statechart<T>> StateExit;
 
+		/// <summary>
+		/// Cteates a new empty <see cref="Statechart{T}"/>.
+		/// </summary>
 		private Statechart()
 		{
 			Name = "()";
@@ -101,6 +117,7 @@ namespace State.Statecharts4
 		{
 			if (visitor == null)
 				throw new ArgumentNullException(nameof(visitor));
+
 			visitor.Visit(this);
 			foreach (var item in States)
 			{
@@ -237,6 +254,7 @@ namespace State.Statecharts4
 				new State<T>(
 					id: o.Id,
 					name: o.Name,
+					description: o.Description,
 					permission: o.Permission,
 					subcharts: o.Subcharts?.Select(o => Statechart<T>.Create(o, name)).ToList(),
 					guard: StateCondition.Create<T>(o.Guard),
@@ -448,6 +466,7 @@ namespace State.Statecharts4
 		{
 			public int Id { get; }
 			public string Name { get; }
+			public string Description { get; }
 			public string Permission { get; }
 			public string Guard { get; }
 			public string Enter { get; }
@@ -457,13 +476,14 @@ namespace State.Statecharts4
 			public IReadOnlyList<TransitionSettings> Transitions { get; set; }
 			public IReadOnlyList<StatechartSettings> Subcharts { get; set; }
 
-			private StateSettings(string name, int? id = null, string permission = null, string guard = null, string enter = null, string exit = null, string entered = null, string passthrough = null,
+			private StateSettings(string name, int? id = null, string description = null, string permission = null, string guard = null, string enter = null, string exit = null, string entered = null, string passthrough = null,
 				IEnumerable<TransitionSettings> transitions = null,
 				IEnumerable<StatechartSettings> subcharts = null
 				)
 			{
 				Name = name;
 				Id = id ?? 0;
+				Description = description;
 				if (id == null)
 				{
 					int i = name.IndexOf(':');
@@ -488,7 +508,7 @@ namespace State.Statecharts4
 
 			public static StateSettings FromXml(XmlLiteNode x)
 			{
-				var ss = new StateSettings(x["name"], x["id"].AsInt32(null), x["permission"], x["guard"], x["enter"], x["exit"], x["entered"], x["passthrough"],
+				var ss = new StateSettings(x["name"], x["id"].AsInt32(null), x["description"], x["permission"], x["guard"], x["enter"], x["exit"], x["entered"], x["passthrough"],
 					x.Where("transition").Select(o => o.AsValue<TransitionSettings>()),
 					x.Where("subchart").Select(o => o.AsValue<StatechartSettings>())
 					);

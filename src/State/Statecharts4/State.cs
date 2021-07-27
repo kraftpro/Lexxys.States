@@ -32,10 +32,11 @@ namespace State.Statecharts4
 		public event Action<T, State<T>, Transition<T>>? StatePassthrough;
 		public event Action<T, State<T>, Transition<T>>? StateExit;
 
-		public State(int id, string name, string? permission = null, IReadOnlyList<Statechart<T>>? subcharts = null, IStateCondition<T>? guard = null, IStateAction<T>? enter = null, IStateAction<T>? entered = null, IStateAction<T>? exit = null, IStateAction<T>? passthrough = null)
+		public State(int id, string name, string? description = null, string? permission = null, IReadOnlyList<Statechart<T>>? subcharts = null, IStateCondition<T>? guard = null, IStateAction<T>? enter = null, IStateAction<T>? entered = null, IStateAction<T>? exit = null, IStateAction<T>? passthrough = null)
 		{
 			Id = id;
 			Name = name;
+			Description = description;
 			Guard = guard ?? StateCondition.True<T>();
 			Permission = permission;
 			Subcharts = subcharts ?? Array.Empty<Statechart<T>>();
@@ -52,6 +53,7 @@ namespace State.Statecharts4
 		{
 			if (visitor == null)
 				throw new ArgumentNullException(nameof(visitor));
+
 			visitor.Visit(this);
 			foreach (var item in Transitions)
 			{

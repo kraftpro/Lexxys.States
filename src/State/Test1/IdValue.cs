@@ -7,7 +7,7 @@ using Lexxys;
 
 #nullable enable
 
-namespace State.Test1
+namespace State.Test1.Tokents
 {
 	public enum IdValueType
 	{

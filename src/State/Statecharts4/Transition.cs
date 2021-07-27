@@ -8,6 +8,8 @@ using System.Security.Principal;
 
 namespace State.Statecharts4
 {
+	using Statecharts;
+
 	[DebuggerDisplay("[{Event,nq}] => {Target.Name,nq}")]
 	public class Transition<T>
 	{

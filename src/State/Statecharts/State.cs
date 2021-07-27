@@ -21,8 +21,8 @@ namespace State.Statecharts
 //		public Statechart<T> Statechart<T> { get; }
 		public IReadOnlyList<Transition<T>> Transitions { get; internal set; }
 		public IReadOnlyList<Statechart<T>> Subcharts { get; }
-		public IStateAction<T> Enter { get; }
-		public IStateAction<T> Exit { get; }
+		//public IStateAction<T> Enter { get; }
+		//public IStateAction<T> Exit { get; }
 
 		public event Action<T, State<T>, Transition<T>> StateEnter;
 		public event Action<T, State<T>, Transition<T>> StateEntered;

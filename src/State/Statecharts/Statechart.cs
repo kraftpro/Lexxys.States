@@ -29,14 +29,23 @@ namespace State.Statecharts
 
 		private static Statechart<T> Empty = new Statechart<T>();
 
+		/// <summary>
+		/// Name of this <see cref="Statechart{T}"/>.
+		/// </summary>
 		public string Name { get; }
 
-		public IReadOnlyList<State<T>> States { get; }
-
-		public State<T> InitialState { get; }
+		/// <summary>
+		/// List of all <see cref="State{T}"/> items in this <see cref="Statechart{T}"/>.
+		/// </summary>
+		private IReadOnlyList<State<T>> States { get; }
 
 		/// <summary>
-		/// Current <see cref="State{T}"/> in the <see cref="Statechart{T}"/>. null if the Statechart<T> is not starterd yet.
+		/// Initial <see cref="State{T}"/> in this <see cref="Statechart{T}"/>.
+		/// </summary>
+		private State<T> InitialState { get; }
+
+		/// <summary>
+		/// Current <see cref="State{T}"/> in this <see cref="Statechart{T}"/>. null if the Statechart<T> is not starterd yet.
 		/// </summary>
 		public State<T> Current { get; private set; }
 
@@ -46,7 +55,7 @@ namespace State.Statecharts
 		public bool IsNotStarted => Current == null;
 
 		/// <summary>
-		/// Indicates that the <see cref="Statechart{T}"/> is in progress state (i.e. started and not finished)
+		/// Indicates that the <see cref="Statechart{T}"/> is in progress (i.e. started and not finished)
 		/// </summary>
 		public bool IsInProgress => Current != null && !Current.IsFinal;
 
@@ -113,16 +122,14 @@ namespace State.Statecharts
 		/// </summary>
 		/// <param name="context">Execution context</param>
 		/// <param name="principal">Current principals</param>
-		public void Start(T context, IPrincipal principal = null, bool continues = false)
+		public void Start(T context, IPrincipal principal = null)
 		{
 			if (IsInProgress)
 				return;
 			if (context == null)
 				throw new ArgumentNullException(nameof(context));
 
-			if (!continues || Current == null)
-				Current = InitialState;
-
+			Current = InitialState;
 			OnStart(context);
 			Current.OnStateEnter(context, null);
 			Idle(Current, context, principal);

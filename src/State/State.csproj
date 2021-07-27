@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Lexxys\src\Lexxys\Lexxys.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="application.config.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
