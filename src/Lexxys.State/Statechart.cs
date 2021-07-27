@@ -4,11 +4,7 @@ using System.Linq;
 using System.Security.Principal;
 using System.Text;
 
-using Lexxys;
-
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.States
 {
 	public class Statechart<T>
 	{
@@ -24,7 +20,6 @@ namespace State.Test1
 		{
 			_states = Array.Empty<State<T>>();
 			Token = Token.Empty;
-			//Actions = new StateFactory(Array.Empty<Token>());
 		}
 
 		public State<T>? CurrentState
@@ -75,15 +70,15 @@ namespace State.Test1
 		/// <summary>
 		/// Executes when the <see cref="State{T}"/> object is trying to become a corrent state in the <see cref="Statechart{T}"/>.
 		/// </summary>
-		public event Action<T, State<T>, Transition<T>, Statechart<T>>? StateEnter;
+		public event Action<T, State<T>, Transition<T>?, Statechart<T>>? StateEnter;
 		/// <summary>
 		/// Executes when the <see cref="State{T}"/> object became a current state.
 		/// </summary>
-		public event Action<T, State<T>, Transition<T>, Statechart<T>>? StateEntered;
+		public event Action<T, State<T>, Transition<T>?, Statechart<T>>? StateEntered;
 		/// <summary>
 		/// Executes when instead of setting as a current state, the <see cref="State{T}"/> object switches to another one by condition.
 		/// </summary>
-		public event Action<T, State<T>, Transition<T>, Statechart<T>>? StatePassthrough;
+		public event Action<T, State<T>, Transition<T>?, Statechart<T>>? StatePassthrough;
 		/// <summary>
 		/// Executes when the <see cref="State{T}"/> object exits the current state condition.
 		/// </summary>

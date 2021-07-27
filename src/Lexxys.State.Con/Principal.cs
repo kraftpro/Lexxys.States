@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Principal;
 
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.State.Con
 {
 	public class Principal: IPrincipal
 	{

@@ -181,7 +181,6 @@ namespace State.Test1
 			goto IL_0264;
 		}
 
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool AllCharsInUInt32AreAscii(uint value)
 		{

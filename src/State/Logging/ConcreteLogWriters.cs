@@ -326,6 +326,7 @@ namespace State.Logging
 		{
 			try
 			{
+				#pragma warning disable CA1416 // Validate platform compatibility
 				var entryType = record.LogType switch
 				{
 					LogType.Output or LogType.Error => EventLogEntryType.Error,
@@ -336,6 +337,7 @@ namespace State.Logging
 				if (message.Length > 32765)
 					message = message.Substring(0, 32765);
 				EventLog.WriteEntry(_eventSource, message, entryType);
+				#pragma warning restore CA1416 // Validate platform compatibility
 			}
 			#pragma warning disable CA1031 // Do not catch general exception types
 			catch

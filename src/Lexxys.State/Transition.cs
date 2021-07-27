@@ -1,13 +1,8 @@
-﻿using Lexxys;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Security.Principal;
-using System.Text;
 
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.States
 {
 	public class Transition<T>
 	{

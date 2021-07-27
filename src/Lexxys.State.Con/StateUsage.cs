@@ -6,12 +6,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-using Lexxys;
-
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.State.Con
 {
+	using States;
+
 	public class StateUsage
 	{
 		//public void Testing()

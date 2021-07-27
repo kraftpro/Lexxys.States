@@ -3,12 +3,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
-using Lexxys;
 
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.States
 {
 	public interface IStateAction<T>
 	{

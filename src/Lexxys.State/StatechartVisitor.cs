@@ -1,8 +1,6 @@
 ﻿using System;
 
-#nullable enable
-
-namespace State.Test1
+namespace Lexxys.States
 {
 	public interface IStatechartVisitor<T>
 	{
