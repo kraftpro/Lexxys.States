@@ -1,11 +1,13 @@
-﻿using Lexxys;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Security.Principal;
+using System.Text;
+using System.Xml.Linq;
 
 namespace Lexxys.States
 {
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class Transition<T>
 	{
 		public Token Event { get; }
@@ -28,6 +30,31 @@ namespace Lexxys.States
 			Action = action;
 			Guard = guard;
 			Roles = ReadOnly.Wrap(roles, true);
+		}
+
+		private string DebuggerDisplay
+		{
+			get
+			{
+				var text = new StringBuilder();
+				text.Append(Source.Id).Append(' ').Append(Source.Name)
+					.Append(" -> ")
+					.Append(Destination.Id).Append(' ').Append(Destination.Name);
+
+				if (!Event.IsEmpty)
+				{
+					text.Append(" /");
+					if (Event.Id > 0)
+						text.Append(Event.Id).Append('.');
+					text.Append(Event.Name);
+				}
+
+				if (Guard != null)
+					text.Append(" [...]");
+				if (Event.Description != null)
+					text.Append(" - ").Append(Event.Description);
+				return text.ToString();
+			}
 		}
 
 		public void Accept(IStatechartVisitor<T> visitor) => visitor.Visit(this);

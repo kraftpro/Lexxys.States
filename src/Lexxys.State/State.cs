@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
+using System.Text;
 
 namespace Lexxys.States
 {
+	[DebuggerDisplay("{DebuggerDisplay}")]
 	public class State<T>
 	{
 		public static readonly State<T> Empty = new State<T>();
@@ -33,6 +36,26 @@ namespace Lexxys.States
 		public string Name => Token.Name;
 		public string? Description => Token.Description;
 		public bool IsEmpty => this == Empty;
+
+		private string DebuggerDisplay
+		{
+			get
+			{
+				var text = new StringBuilder();
+				if (Id > 0)
+					text.Append(Id).Append('.');
+				text.Append(Name);
+				if (Guard != null)
+					text.Append(" [...]");
+				if (Roles.Count > 0)
+					text.Append(" [").Append(String.Join(',', Roles)).Append(']');
+				if (Subcharts.Count > 0)
+					text.Append(" {").Append(String.Join(',', Subcharts.Select(o => o.Name))).Append('}');
+				if (Description != null)
+					text.Append(" - ").Append(Description);
+				return text.ToString();
+			}
+		}
 
 		public event Action<T, State<T>, Transition<T>?>? StateEnter;
 		public event Action<T, State<T>, Transition<T>?>? StatePassthrough;

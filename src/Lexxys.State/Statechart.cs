@@ -1,13 +1,15 @@
-﻿using Lexxys;
+﻿using Microsoft.Extensions.Primitives;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
 
 namespace Lexxys.States
 {
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class Statechart<T>
 	{
 		private readonly List<State<T>> _states;
@@ -52,7 +54,6 @@ namespace Lexxys.States
 		public string Name => Token.Name;
 		public string? Description => Token.Description;
 
-
 		/// <summary>
 		/// Checks whether the <see cref="Statechart{T}"/> has been started.
 		/// </summary>
@@ -67,6 +68,27 @@ namespace Lexxys.States
 		/// Indicates that the <see cref="Statechart{T}"/> is in final state.
 		/// </summary>
 		public bool IsFinished => !CurrentState.IsEmpty && IsFinalState();
+
+		private string DebuggerDisplay
+		{
+			get
+			{
+				var text = new StringBuilder();
+				if (Id > 0)
+					text.Append(Id).Append('.');
+				text.Append(Name).Append(' ')
+					.Append(_states.Count).Append(" states, ");
+				if (CurrentState.IsEmpty)
+					text.Append("(empty) not started");
+				else
+					text.Append('(').Append(CurrentState.Id)
+						.Append(' ').Append(CurrentState.Name).Append(')')
+						.Append(IsFinished ? " finished": " in progress");
+				if (Description != null)
+					text.Append(" - ").Append(Description);
+				return text.ToString();
+			}
+		}
 
 		#region Events
 

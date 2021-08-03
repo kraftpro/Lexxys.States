@@ -19,7 +19,7 @@ namespace Lexxys.State.Con
 
 		private static Statechart<Entity> CreateStatechart1()
 		{
-			return new Statechart<Entity>(TokenFactory.Default.Create("Entity-Chart"), Array.Empty<State<Entity>>());
+			return new Statechart<Entity>(TokenFactory.Default.Token("Entity-Chart"), Array.Empty<State<Entity>>(), Array.Empty<Transition<Entity>>());
 		}
 	}
 }
