@@ -25,13 +25,13 @@ namespace State.Statecharts4
 
 		public static IStateAction<T> Create<T>(string expression) => RoslynAction<T>.Create(expression);
 
-		public static IStateAction<T> Create<T>(Action<T> expression, Func<T, Task> asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T>? expression, Func<T, Task>? asyncExpression = null)
 			=> expression == null && asyncExpression == null ? Empty<T>(): new DelegateAction<T>(expression, asyncExpression);
 
-		public static IStateAction<T> Create<T>(Action<T, State<T>> expression, Func<T, State<T>, Task> asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T, State<T>>? expression, Func<T, State<T>, Task>? asyncExpression = null)
 			=> expression == null && asyncExpression == null ? Empty<T>(): new DelegateAction<T>(expression, asyncExpression);
 
-		public static IStateAction<T> Create<T>(Action<T, State<T>, Transition<T>> expression, Func<T, State<T>, Transition<T>, Task> asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T, State<T>, Transition<T>>? expression, Func<T, State<T>, Transition<T>, Task>? asyncExpression = null)
 			=> expression == null && asyncExpression == null ? Empty<T>(): new DelegateAction<T>(expression, asyncExpression);
 
 		#region Implemetation: EmptyAction, SimpleAction, RoslynAction
@@ -54,15 +54,15 @@ namespace State.Statecharts4
 			private readonly Action<T, State<T>, Transition<T>> _syncAction;
 			private readonly Func<T, State<T>, Transition<T>, Task> _asyncAction;
 
-			public DelegateAction(Action<T, State<T>, Transition<T>> syncAction, Func<T, State<T>, Transition<T>, Task> asyncAction)
+			public DelegateAction(Action<T, State<T>, Transition<T>>? syncAction, Func<T, State<T>, Transition<T>, Task>? asyncAction)
 			{
 				if (syncAction == null && asyncAction == null)
 					throw new ArgumentNullException(nameof(syncAction));
-				_syncAction = syncAction ?? ((o, s, t) => asyncAction(o, s, t).Wait());
-				_asyncAction = asyncAction ?? ((o, s, t) => { syncAction(o, s, t); return Task.CompletedTask; });
+				_syncAction = syncAction ?? ((o, s, t) => asyncAction!(o, s, t).Wait());
+				_asyncAction = asyncAction ?? ((o, s, t) => { syncAction!(o, s, t); return Task.CompletedTask; });
 			}
 
-			public DelegateAction(Action<T, State<T>> syncAction, Func<T, State<T>, Task> asyncAction)
+			public DelegateAction(Action<T, State<T>>? syncAction, Func<T, State<T>, Task>? asyncAction)
 			{
 				if (syncAction == null && asyncAction == null)
 					throw new ArgumentNullException(nameof(syncAction));
@@ -70,25 +70,25 @@ namespace State.Statecharts4
 				if (syncAction != null)
 					_syncAction = (o, s, t) => syncAction(o, s);
 				else
-					_syncAction = (o, s, t) => asyncAction(o, s).Wait();
+					_syncAction = (o, s, t) => asyncAction!(o, s).Wait();
 				if (asyncAction != null)
 					_asyncAction = (o, s, t) => asyncAction(o, s);
 				else
-					_asyncAction = (o, s, t) => { syncAction(o, s); return Task.CompletedTask; };
+					_asyncAction = (o, s, t) => { syncAction!(o, s); return Task.CompletedTask; };
 			}
 
-			public DelegateAction(Action<T> syncAction, Func<T, Task> asyncAction)
+			public DelegateAction(Action<T>? syncAction, Func<T, Task>? asyncAction)
 			{
 				if (syncAction == null && asyncAction == null)
 					throw new ArgumentNullException(nameof(syncAction));
 				if (syncAction != null)
 					_syncAction = (o, s, t) => syncAction(o);
 				else
-					_syncAction = (o, s, t) => asyncAction(o).Wait();
+					_syncAction = (o, s, t) => asyncAction!(o).Wait();
 				if (asyncAction != null)
 					_asyncAction = (o, s, t) => asyncAction(o);
 				else
-					_asyncAction = (o, s, t) => { syncAction(o); return Task.CompletedTask; };
+					_asyncAction = (o, s, t) => { syncAction!(o); return Task.CompletedTask; };
 			}
 
 			public Action<T, State<T>, Transition<T>> GetDelegate() => _syncAction;
@@ -99,8 +99,8 @@ namespace State.Statecharts4
 		private class RoslynAction<T>: IStateAction<T>
 		{
 			private readonly string _expression;
-			private Func<T, State<T>, Transition<T>, Task> _asyncHandler;
-			private Action<T, State<T>, Transition<T>> _syncHandler;
+			private Func<T, State<T>, Transition<T>, Task>? _asyncHandler;
+			private Action<T, State<T>, Transition<T>>? _syncHandler;
 
 			public RoslynAction(string expression)
 			{
@@ -109,7 +109,7 @@ namespace State.Statecharts4
 				_expression = expression;
 			}
 
-			public static IStateAction<T> Create(string expression)
+			public static IStateAction<T> Create(string? expression)
 			{
 				return (expression = expression.TrimToNull()) == null ? Empty<T>():
 					__compiledActions.GetOrAdd(expression, o => new RoslynAction<T>(o));
@@ -119,13 +119,13 @@ namespace State.Statecharts4
 			public Action<T, State<T>, Transition<T>> GetDelegate()
 			{
 				Compile();
-				return _syncHandler;
+				return _syncHandler!;
 			}
 
 			public Func<T, State<T>, Transition<T>, Task> GetAsyncDelegate()
 			{
 				Compile();
-				return _asyncHandler;
+				return _asyncHandler!;
 			}
 
 			private void Compile()
@@ -164,15 +164,15 @@ namespace State.Statecharts4
 
 	public class StateActionGlobals<T>
 	{
-		public readonly T obj;
-		public readonly State<T> state;
-		public readonly Transition<T> transition;
+		public T Obj { get; }
+		public State<T> State { get; }
+		public Transition<T> Transition { get; }
 
-		public StateActionGlobals(T obj, State<T> state = null, Transition<T> transition = null)
+		public StateActionGlobals(T obj, State<T> state, Transition<T> transition)
 		{
-			this.obj = obj;
-			this.state = state;
-			this.transition = transition;
+			Obj = obj;
+			State = state;
+			Transition = transition;
 		}
 	}
 }

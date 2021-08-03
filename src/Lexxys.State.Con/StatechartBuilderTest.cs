@@ -10,6 +10,7 @@ namespace Lexxys.State.Con
 
 	class StatechartBuilderTest
 	{
+#if false
 		public static void Go()
 		{
 			//var a0 = new StatechartBuilder0();
@@ -241,7 +242,7 @@ namespace Lexxys.State.Con
 					.Final()
 				;
 		}
-
+#endif
 		class Expo
 		{
 			public void Open()

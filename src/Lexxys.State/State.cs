@@ -57,10 +57,10 @@ namespace Lexxys.States
 			}
 		}
 
-		public event Action<T, State<T>, Transition<T>?>? StateEnter;
-		public event Action<T, State<T>, Transition<T>?>? StatePassthrough;
-		public event Action<T, State<T>, Transition<T>?>? StateEntered;
-		public event Action<T, State<T>, Transition<T>?>? StateExit;
+		public event Action<T, State<T>, Transition<T>>? StateEnter;
+		public event Action<T, State<T>, Transition<T>>? StatePassthrough;
+		public event Action<T, State<T>, Transition<T>>? StateEntered;
+		public event Action<T, State<T>, Transition<T>>? StateExit;
 
 		public void Accept(IStatechartVisitor<T> visitor)
 		{
@@ -79,7 +79,7 @@ namespace Lexxys.States
 
 		private bool InvokeGuard(T value) => Guard == null || Guard.Invoke(value);
 
-		internal void OnStateEnter(T value, Transition<T>? transition)
+		internal void OnStateEnter(T value, Transition<T> transition)
 		{
 #if TRACE_EVENTS
 			Console.WriteLine($"# {Name}: Enter");
@@ -87,7 +87,7 @@ namespace Lexxys.States
 			StateEnter?.Invoke(value, this, transition);
 		}
 
-		internal void OnStateEntered(T value, Transition<T>? transition, IPrincipal? principal)
+		internal void OnStateEntered(T value, Transition<T> transition, IPrincipal? principal)
 		{
 #if TRACE_EVENTS
 			Console.WriteLine($"# {Name}: Entered");
@@ -99,7 +99,7 @@ namespace Lexxys.States
 			}
 		}
 
-		internal void OnStatePassthrough(T value, Transition<T>? transition)
+		internal void OnStatePassthrough(T value, Transition<T> transition)
 		{
 #if TRACE_EVENTS
 			Console.WriteLine($"# {Name}: Passthrough");
@@ -107,7 +107,7 @@ namespace Lexxys.States
 			StatePassthrough?.Invoke(value, this, transition);
 		}
 
-		internal void OnStateExit(T value, Transition<T>? transition)
+		internal void OnStateExit(T value, Transition<T> transition)
 		{
 #if TRACE_EVENTS
 			Console.WriteLine($"# {Name}: Exit");

@@ -51,8 +51,8 @@ namespace Lexxys.States
 
 		public bool IsEmpty => this == Empty;
 
-		public event Action<TEntity, Token>? ChartEnter;
-		public event Action<TEntity, Token>? ChartExit;
+		//public event Action<TEntity, Token>? ChartEnter;
+		//public event Action<TEntity, Token>? ChartExit;
 
 		/// <summary>
 		/// Creates a new <see cref="State"/> in the <see cref="StatechartBuilder{Token, Token, TEntity}"/>.
@@ -88,17 +88,17 @@ namespace Lexxys.States
 			return Parent;
 		}
 
-		public StatechartBuilder<TEntity> OnEnter(Action<TEntity, Token> action)
-		{
-			ChartEnter += action;
-			return this;
-		}
+		//public StatechartBuilder<TEntity> OnEnter(Action<TEntity, Token> action)
+		//{
+		//	ChartEnter += action;
+		//	return this;
+		//}
 
-		public StatechartBuilder<TEntity> OnExit(Action<TEntity, Token> action)
-		{
-			ChartExit += action;
-			return this;
-		}
+		//public StatechartBuilder<TEntity> OnExit(Action<TEntity, Token> action)
+		//{
+		//	ChartExit += action;
+		//	return this;
+		//}
 
 
 

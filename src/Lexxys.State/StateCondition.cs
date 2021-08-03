@@ -141,10 +141,6 @@ namespace Lexxys.States
 			{
 			}
 
-			public bool Evaluate(T context) => true;
-
-			public Task<bool> EvaluateAsync(T context) => Task.FromResult(true);
-
 			public Func<T, Task<bool>> GetAsyncDelegate() => o => Task.FromResult(true);
 
 			public Func<T, bool> GetDelegate() => o =>true;

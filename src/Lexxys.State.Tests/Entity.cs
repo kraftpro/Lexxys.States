@@ -6,16 +6,16 @@ namespace Lexxys.State.Tests
 
 	public class Login
 	{
-		private readonly bool _test;
+		private readonly bool _success;
 
-		public Login(bool test)
+		public Login(bool success)
 		{
-			_test = test;
+			_success = success;
 		}
 
 		public LoginStates State { get; set; }
 
-		public bool Success() => _test;
+		public bool Success() => _success;
 	}
 
 	public enum LoginStates

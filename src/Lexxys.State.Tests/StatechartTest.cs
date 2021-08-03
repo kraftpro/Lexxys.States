@@ -10,10 +10,33 @@ namespace Lexxys.State.Tests
 	public class StatechartTest
 	{
 		[TestMethod]
-		public void CreateStatechartTest()
+		public void CreateTest()
 		{
 			var chart = CreateLoginChart();
 			Assert.IsNotNull(chart);
+			Assert.IsFalse(chart.IsInProgress);
+			Assert.IsFalse(chart.IsFinished);
+		}
+
+		[TestMethod]
+		public void StartTest()
+		{
+			var chart = CreateLoginChart();
+			var x = new Login(true);
+			chart.Start(x);
+			Assert.IsTrue(chart.IsInProgress);
+		}
+
+		[TestMethod]
+		public void GetActiveActionsTest()
+		{
+			var chart = CreateLoginChart();
+			var x = new Login(true);
+			chart.Start(x);
+			Assert.IsTrue(chart.IsInProgress);
+			var actions = chart.GetActiveActions(x).ToIList();
+			Assert.IsNotNull(actions);
+			Assert.AreEqual(2, actions.Count);
 		}
 
 		private static Statechart<Login> CreateLoginChart()
@@ -29,6 +52,7 @@ namespace Lexxys.State.Tests
 			var authenticated = new State<Login>(s.Token(LoginStates.Authenticated, "The user is authenticated"));
 			var notAuthenticated = new State<Login>(s.Token(LoginStates.NotAuthenticated, "Wrong user name and password combination"));
 
+			var start = new Transition<Login>(State<Login>.Empty, initialized);
 			var enterName1 = new Transition<Login>(initialized, nameEntered, t.Token("Name"));
 			var enterParrword1 = new Transition<Login>(initialized, passwordEntered, t.Token("Password"));
 
@@ -46,7 +70,7 @@ namespace Lexxys.State.Tests
 
 			var loginChart = new Statechart<Login>(TokenFactory.Create("statecharts").Token("Login"),
 				new[] { initialized, nameEntered, passwordEntered, nameAndPasswordEntered, authenticated, notAuthenticated },
-				new[] { enterName1, enterName2, enterParrword1, enterParrword2, authenticate1, authenticate2, reset1, reset2, reset3 });
+				new[] { start, enterName1, enterName2, enterParrword1, enterParrword2, authenticate1, authenticate2, reset1, reset2, reset3 });
 			return loginChart;
 		}
 	}

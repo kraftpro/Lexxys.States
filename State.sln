@@ -9,9 +9,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lexxys", "..\Lexxys\src\Lex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lexxys.State", "src\Lexxys.State\Lexxys.State.csproj", "{7FAA5DAF-5001-4E37-B60F-76C928B3278E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lexxys.State.Tests", "src\Lexxys.State.Tests\Lexxys.State.Tests.csproj", "{45969C19-758B-4F75-9602-B0416764509A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lexxys.State.Tests", "src\Lexxys.State.Tests\Lexxys.State.Tests.csproj", "{45969C19-758B-4F75-9602-B0416764509A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lexxys.State.Con", "src\Lexxys.State.Con\Lexxys.State.Con.csproj", "{5DDC8FE4-E441-43CD-832F-BAFF54C897D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lexxys.State.Con", "src\Lexxys.State.Con\Lexxys.State.Con.csproj", "{5DDC8FE4-E441-43CD-832F-BAFF54C897D1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{868D8232-EB9C-474B-8495-CB658133B1F3}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
