@@ -31,17 +31,24 @@ namespace Lexxys.States
 			Domain = domain;
 		}
 
-		public bool IsEmpty => Object.ReferenceEquals(this, Empty);
+		public bool Contains(Token token) => !token.IsGlobal() && (this == token.Domain || Contains(token.Domain));
 
-		public bool IsGlobal => Object.ReferenceEquals(this.Domain, Empty);
-
-		public bool Contains(Token token) => !token.IsGlobal && (this == token.Domain || Contains(token.Domain));
-
-		public IEnumerable<Token> GetPath() => new PathCollection(this);
+		public List<Token> GetPath()
+		{
+			var list = new List<Token>();
+			var token = this;
+			do
+			{
+				list.Add(token);
+				token = token.Domain;
+			} while (!token.IsEmpty());
+			list.Reverse();
+			return list;
+		}
 
 		public override string ToString()
 		{
-			if (IsEmpty)
+			if (Object.ReferenceEquals(this, Empty))
 				return "(empty)";
 			var text = new StringBuilder();
 			if (Id != 0)
@@ -58,17 +65,24 @@ namespace Lexxys.States
 
 		private class TokenScope: ITokenScope
 		{
-			private readonly ConcurrentDictionary<(Token Domain, int Id), Token> __issuedTokens = new();
+			private readonly ConcurrentDictionary<(Token Domain, int Id), Token> _issuedTokens ;
+
+			public TokenScope(TokenScope? scope = null, Token? domain = null)
+			{
+				Domain = domain ?? Empty;
+				_issuedTokens = scope?._issuedTokens ?? new ConcurrentDictionary<(Token Domain, int Id), Token>();
+			}
+
+			public Token Domain { get; }
+
+			public ITokenScope WithDomain(Token domain)
+				=> new TokenScope(this, domain);
 
 			public Token Token(int id, string name, string? description = null, Token? domain = null)
 			{
 				if (name == null || (name = name.Trim()).Length == 0)
 					throw new ArgumentNullException(nameof(name));
-				if (domain == null)
-					domain = Empty;
-				//else if (!this.IsInScope(domain))
-				//	throw new ArgumentOutOfRangeException(nameof(domain));
-				return __issuedTokens.GetOrAdd((domain, id), o => new Token(o.Id, name, description, o.Domain));
+				return _issuedTokens.GetOrAdd((domain ?? Domain, id), o => new Token(o.Id, name, description, o.Domain));
 			}
 
 			public Token Token(string name, string? description = null, Token? domain = null)
@@ -76,12 +90,12 @@ namespace Lexxys.States
 				if (name == null || (name = name.Trim()).Length == 0)
 					throw new ArgumentNullException(nameof(name));
 				if (domain == null)
-					domain = Empty;
+					domain = Domain;
 
 				int index = 0;
-				foreach (var item in __issuedTokens.Where(o => o.Key.Domain == domain))
+				foreach (var item in _issuedTokens.Where(o => o.Key.Domain == domain))
 				{
-					if (item.Value.Name == name)
+					if (String.Equals(item.Value.Name, name, StringComparison.OrdinalIgnoreCase))
 						return item.Value;
 					if (index < item.Key.Id)
 						index = item.Key.Id;
@@ -90,56 +104,12 @@ namespace Lexxys.States
 				do
 				{
 					token = new Token(++index, name, description, domain);
-				} while (!__issuedTokens.TryAdd((domain, index), token));
+				} while (!_issuedTokens.TryAdd((domain, index), token));
 				return token;
 			}
 
 			public Token? Find(Token domain, int id)
-				=> __issuedTokens.TryGetValue((domain, id), out var token) ? token: null;
-		}
-
-		private class PathCollection: IEnumerable<Token>
-		{
-			private readonly Token _token;
-
-			public PathCollection(Token token) => _token = token ?? Empty;
-
-			public IEnumerator<Token> GetEnumerator() => new Enumerator(_token);
-
-			IEnumerator IEnumerable.GetEnumerator() => new Enumerator(_token);
-
-			private struct Enumerator: IEnumerator<Token>
-			{
-				private readonly Token _token;
-				private Token? _part;
-
-				public Enumerator(Token token)
-				{
-					_token = token ?? Empty;
-					_part = null;
-				}
-
-				public Token Current => _part ?? throw new InvalidOperationException();
-				object IEnumerator.Current => _part ?? throw new InvalidOperationException();
-
-				public void Dispose()
-				{
-				}
-
-				public bool MoveNext()
-				{
-					if (_part == null)
-						_part = _token;
-					else
-						_part = _part.Domain;
-					return !_part.IsEmpty;
-				}
-
-				public void Reset()
-				{
-					_part = null;
-				}
-			}
+				=> _issuedTokens.TryGetValue((domain, id), out var token) ? token: null;
 		}
 	}
 
@@ -177,6 +147,8 @@ namespace Lexxys.States
 
 	public interface ITokenScope
 	{
+		Token Domain { get; }
+		ITokenScope WithDomain(Token domain);
 		Token Token(int id, string name, string? description = null, Token? domain = null);
 		Token Token(string name, string? description = null, Token? domain = null);
 		Token? Find(Token domain, int id);
@@ -185,88 +157,49 @@ namespace Lexxys.States
 	public static class TokenFactory
 	{
 		private static readonly ITokenScope __defaultFactory = Token.CreateScope();
-		private static readonly ConcurrentDictionary<string, ITokenScope> __factories = new ConcurrentDictionary<string, ITokenScope>();
+		private static readonly ConcurrentDictionary<string, ITokenScope> __factories = new ConcurrentDictionary<string, ITokenScope>(StringComparer.OrdinalIgnoreCase);
 
 		public static ITokenScope Default => __defaultFactory;
 
-		public static ITokenScope Create(Token domain)
-		{
-			var name = String.Join(',', domain.GetPath().Select(o => o.Name));
-			return __factories.GetOrAdd(name, o => new TokenScopeWithDomain(Token.CreateScope(), domain));
-		}
-
 		public static ITokenScope Create(params string[] path)
+			=> Create(path, path.Length);
+
+		public static ITokenScope Create(ITokenScope parent, string name)
+			=> Create(parent.Token(name));
+
+		private static ITokenScope Create(Token domain)
 		{
-			//var scope = Default;
-			//var text = new StringBuilder();
-			//foreach (var name in path)
-			//{
-			//	text.Append(name);
-			//	var token = scope.Token(name);
-			//	scope = __factories.GetOrAdd(text.ToString(), o => new TokenScopeWithDomain(Token.CreateScope(), token));
-			//	text.Append('.');
-			//}
-			//return scope;
-			return Create(path, path.Length);
+			var name = String.Join('.', domain.GetPath().Select(o => o.Name));
+			return __factories.GetOrAdd(name, o => Token.CreateScope().WithDomain(domain));
 		}
 
 		private static ITokenScope Create(string[] path, int count)
 		{
 			if (count == 0)
 				return Default;
+			if (count == 1)
+				return __factories.GetOrAdd(path[0], o => Token.CreateScope().WithDomain(Default.Token(o)));
+
 			var pathName = String.Join('.', path, 0, count);
 			if (__factories.TryGetValue(pathName, out var scope))
 				return scope;
 
 			scope = Create(path, count - 1);
 			var token = scope.Token(path[count - 1]);
-			return __factories.GetOrAdd(pathName, o => new TokenScopeWithDomain(Token.CreateScope(), token));
+			return __factories.GetOrAdd(pathName, o => Token.CreateScope().WithDomain(token));
 		}
+	}
 
-		public static ITokenScope Create(ITokenScope parent, string name)
-			=> Create(parent.Token(name));
-
-		public static ITokenScope Create(string? domain = null)
-			=> __factories[Guid.NewGuid().ToString("N")] = domain == null ? Token.CreateScope() : new TokenScopeWithDomain(Token.CreateScope(), Default.Token(domain));
-
-		//public static ITokenScope GetFactory(string name)
-		//	=> __factories.GetOrAdd(name, o => Token.CreateScope());
-
-		//public static ITokenScope GetFactory(Token domain)
-		//	=> __factories.GetOrAdd(domain.Name, o => new TokenScopeWithDomain(Token.CreateScope(), domain));
-
-		//public static ITokenScope GetFactory(string name, Token domain)
-		//	=> __factories.GetOrAdd(name, o => new TokenScopeWithDomain(Token.CreateScope(), domain));
-
-		//public static ITokenScope GetFactory(string name, string domain)
-		//	=> __factories.GetOrAdd(name, o => new TokenScopeWithDomain(Token.CreateScope(), Default.Token(domain)));
-
-		class TokenScopeWithDomain : ITokenScope
-		{
-			public TokenScopeWithDomain(ITokenScope scope, Token domain)
-			{
-				Scope = scope;
-				Domain = domain;
-			}
-
-			public ITokenScope Scope { get; }
-			public Token Domain { get; }
-
-			public Token Token(int id, string name, string? description = null, Token? domain = null)
-				=> Scope.Token(id, name, description, domain ?? Domain);
-
-			public Token Token(string name, string? description = null, Token? domain = null)
-				=> Scope.Token(name, description, domain ?? Domain);
-
-			public Token? Find(Token domain, int id)
-				=> Scope.Find(domain, id);
-		}
+	public static class ITokenExtensjions
+	{
+		public static bool IsEmpty(this Token? token) => token == null || Object.ReferenceEquals(token, Token.Empty);
+		public static bool IsGlobal(this Token? token) => token == null || Object.ReferenceEquals(token.Domain, Token.Empty);
 	}
 
 	public static class ITokenScopeExtensions
 	{
 		public static bool IsInScope(this ITokenScope scope, Token token)
-			=> token is null || token == States.Token.Empty || scope.Find(token.Domain, token.Id) == token;
+			=> token.IsEmpty() || scope.Find(token.Domain, token.Id) == token;
 
 		public static Token Token(this ITokenScope scope, Enum value, string? description = null, Token? domain = null)
 		{
@@ -280,28 +213,7 @@ namespace Lexxys.States
 			return scope.Token(token.Id, token.Name, token.Description, domain);
 		}
 
-		public static ITokenScope WithDomain(this ITokenScope scope, Token domain)
-			=> new TokenScopeWithDomain(scope, domain);
-
-		class TokenScopeWithDomain: ITokenScope
-		{
-			public TokenScopeWithDomain(ITokenScope scope, Token domain)
-			{
-				Scope = scope ?? throw new ArgumentNullException(nameof(scope));
-				Domain = domain ?? throw new ArgumentNullException(nameof(domain));
-			}
-
-			public ITokenScope Scope { get; }
-			public Token Domain { get; }
-
-			public Token Token(int id, string name, string? description = null, Token? domain = null)
-				=> Scope.Token(id, name, description, domain ?? Domain);
-
-			public Token Token(string name, string? description = null, Token? domain = null)
-				=> Scope.Token(name, description, domain ?? Domain);
-
-			public Token? Find(Token domain, int id)
-				=> Scope.Find(domain, id);
-		}
+		public static ITokenScope WithDomain(this ITokenScope scope, string domain)
+			=> scope.WithDomain(scope.Token(domain));
 	}
 }

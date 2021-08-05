@@ -58,6 +58,8 @@ namespace Lexxys.States
 
 			public Func<T, bool> GetDelegate() => o => !_predicate.Invoke(o);
 
+			public override string ToString() => $"~({_predicate})";
+
 			public static IStateCondition<T> Create(IStateCondition<T> condition)
 			{
 				if (condition == null)
@@ -79,6 +81,8 @@ namespace Lexxys.States
 
 			public Func<T, Task<bool>> GetAsyncDelegate() => async o => await _left.InvokeAsync(o) || await _right.InvokeAsync(o);
 			public Func<T, bool> GetDelegate() => o => _left.Invoke(o) || _right.Invoke(o);
+
+			public override string ToString() => $"({_left}) | ({_right})";
 
 			public static IStateCondition<T> Create(IStateCondition<T> left, IStateCondition<T> right)
 			{
@@ -107,6 +111,8 @@ namespace Lexxys.States
 			public Func<T, Task<bool>> GetAsyncDelegate() => async o => await _left.InvokeAsync(o) || await _right.InvokeAsync(o);
 			public Func<T, bool> GetDelegate() => o => _left.Invoke(o) || _right.Invoke(o);
 
+			public override string ToString() => $"({_left}) & ({_right})";
+
 			public static IStateCondition<T> Create(IStateCondition<T> left, IStateCondition<T> right)
 			{
 				if (left is null)
@@ -131,6 +137,8 @@ namespace Lexxys.States
 			public Func<T, Task<bool>> GetAsyncDelegate() => o => Task.FromResult(false);
 
 			public Func<T, bool> GetDelegate() => o => false;
+
+			public override string ToString() => "false";
 		}
 
 		private class TrueCondition<T>: IStateCondition<T>
@@ -144,6 +152,8 @@ namespace Lexxys.States
 			public Func<T, Task<bool>> GetAsyncDelegate() => o => Task.FromResult(true);
 
 			public Func<T, bool> GetDelegate() => o =>true;
+
+			public override string ToString() => "true";
 		}
 
 		private class SimpleCondition<T>: IStateCondition<T>
@@ -166,6 +176,11 @@ namespace Lexxys.States
 			public Func<T, bool> GetDelegate() => _condition;
 
 			public Func<T, Task<bool>> GetAsyncDelegate() => _condition2;
+
+			public override string ToString()
+			{
+				return $"Condition<{typeof(T).Name}>";
+			}
 		}
 
 		private class RoslynCondition<T>: IStateCondition<T>
@@ -200,6 +215,11 @@ namespace Lexxys.States
 			{
 				Compile();
 				return _asyncPredicate!;
+			}
+
+			public override string ToString()
+			{
+				return _expression;
 			}
 
 			private void Compile()

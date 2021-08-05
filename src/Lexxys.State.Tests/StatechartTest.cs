@@ -1,10 +1,11 @@
+using System.Linq;
+using System.Threading.Tasks;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.State.Tests
 {
 	using States;
-
-	using System.Threading.Tasks;
 
 	[TestClass]
 	public class StatechartTest
@@ -21,29 +22,64 @@ namespace Lexxys.State.Tests
 		[TestMethod]
 		public void StartTest()
 		{
-			var chart = CreateLoginChart();
 			var x = new Login(true);
+			var chart = CreateLoginChart();
 			chart.Start(x);
 			Assert.IsTrue(chart.IsInProgress);
 		}
 
 		[TestMethod]
-		public void GetActiveActionsTest()
+		public void StartWithoutStartTest()
 		{
-			var chart = CreateLoginChart();
 			var x = new Login(true);
-			chart.Start(x);
+			var chart = CreateLoginChart();
+			var start = chart.GetActiveEvents(x).ToList();
+			Assert.AreEqual(1, start.Count);
+			start[0].Execute(x);
 			Assert.IsTrue(chart.IsInProgress);
-			var actions = chart.GetActiveActions(x).ToIList();
-			Assert.IsNotNull(actions);
-			Assert.AreEqual(2, actions.Count);
+			Assert.AreEqual(nameof(LoginStates.Initialized), chart.CurrentState.Name);
+		}
+
+		[TestMethod]
+		public void GetActiveEventsTest()
+		{
+			var x = new Login(true);
+			var chart = CreateLoginChart();
+			var events = chart.GetActiveEvents(x).ToList();
+			Assert.AreEqual(1, events.Count);
+
+			chart.Start(x);
+			events = chart.GetActiveEvents(x).ToList();
+			Assert.AreEqual(2, events.Count);
+		}
+
+		[TestMethod]
+		public void MoveAlongNameTest()
+		{
+			var x = new Login(true);
+			var chart = CreateLoginChart();
+			var events = chart.GetActiveEvents(x).ToIList();
+			chart.Start(x);
+			events = chart.GetActiveEvents(x).ToList();
+			Assert.AreEqual(2, events.Count);
+
+			var stf = TokenFactory.Create("statecharts", "Login").WithDomain("stt");
+			var ttf = TokenFactory.Create("statecharts", "Login").WithDomain("trn");
+
+			var en = ttf.Token("Name");
+			var name = events.FirstOrDefault(o => o.Transition.Event == ttf.Token("Name"));
+			Assert.IsNotNull(name);
+			name.Execute(x);
+			Assert.AreEqual(chart.CurrentState, name.Transition.Destination);
+			var token = stf.Token(LoginStates.NameEntered);
+			Assert.AreEqual(chart.CurrentState.Token, token);
 		}
 
 		private static Statechart<Login> CreateLoginChart()
 		{
 			var login = TokenFactory.Create("statecharts", "Login");
-			var s = TokenFactory.Create(login, "State");
-			var t = TokenFactory.Create(login, "Transition");
+			var s = login.WithDomain("stt");
+			var t = login.WithDomain("trn");
 
 			var initialized = new State<Login>(s.Token(LoginStates.Initialized, "Initial login state"));
 			var nameEntered = new State<Login>(s.Token(LoginStates.NameEntered, "Name has been entered"));

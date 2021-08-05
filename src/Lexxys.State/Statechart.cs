@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Primitives;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,7 +7,6 @@ using System.Text;
 
 namespace Lexxys.States
 {
-	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class Statechart<T>
 	{
 		private readonly List<State<T>> _states;
@@ -23,7 +20,7 @@ namespace Lexxys.States
 		{
 			if (token == null)
 				throw new ArgumentNullException(nameof(token));
-			if (token == Token.Empty)
+			if (token.IsEmpty())
 				throw new ArgumentOutOfRangeException(nameof(token), token, null);
 			if (states == null)
 				throw new ArgumentNullException(nameof(states));
@@ -72,27 +69,6 @@ namespace Lexxys.States
 		/// Indicates that the <see cref="Statechart{T}"/> is in final state.
 		/// </summary>
 		public bool IsFinished => !CurrentState.IsEmpty && IsFinalState();
-
-		private string DebuggerDisplay
-		{
-			get
-			{
-				var text = new StringBuilder();
-				if (Id > 0)
-					text.Append(Id).Append('.');
-				text.Append(Name).Append(' ')
-					.Append(_states.Count).Append(" states, ");
-				if (CurrentState.IsEmpty)
-					text.Append("(empty) not started");
-				else
-					text.Append('(').Append(CurrentState.Id)
-						.Append(' ').Append(CurrentState.Name).Append(')')
-						.Append(IsFinished ? " finished": " in progress");
-				if (Description != null)
-					text.Append(" - ").Append(Description);
-				return text.ToString();
-			}
-		}
 
 		#region Events
 
@@ -167,7 +143,7 @@ namespace Lexxys.States
 
 		public void SetCurrentState(int? stateId) => CurrentState = stateId is null ? State<T>.Empty: _states.FirstOrDefault(o => o.Id == stateId) ?? throw new ArgumentOutOfRangeException(nameof(stateId), stateId, null);
 
-		public void SetCurrentState(Token stateToken) => CurrentState = stateToken.IsEmpty ? State<T>.Empty: _states.FirstOrDefault(o => o.Token == stateToken) ?? throw new ArgumentOutOfRangeException(nameof(stateToken), stateToken, null);
+		public void SetCurrentState(Token stateToken) => CurrentState = stateToken.IsEmpty() ? State<T>.Empty: _states.FirstOrDefault(o => o.Token == stateToken) ?? throw new ArgumentOutOfRangeException(nameof(stateToken), stateToken, null);
 
 		//private State<T>? FindState(Token token)
 		//{
@@ -204,80 +180,81 @@ namespace Lexxys.States
 		private IReadOnlyList<Transition<T>> GetStateTransitions(State<T> state)
 			=> _treansitions.TryGetValue(state, out var transitions) ? transitions: Array.Empty<Transition<T>>();
 
-		//private Statechart<T>? FindStatechart(Token token)
-		//{
-		//	if (token == null)
-		//		throw new ArgumentNullException(nameof(token));
-		//	if (Token == token)
-		//		return this;
-		//	if (!Token.Contains(token))
-		//		return null;
-
-		//	foreach (var state in _states)
-		//	{
-		//		foreach (var chart in state.Subcharts)
-		//		{
-		//			if (chart.Token == token)
-		//				return chart;
-		//		}
-		//	}
-		//	return null;
-		//}
-
 		private Transition<T> FindInitialTransition()
 			=> _treansitions.GetValueOrDefault(State<T>.Empty)[0];
 
 		public void Start(T value, IPrincipal? principal = null)
 		{
-			if (IsInProgress)
-				return;
 			Reset();
 			var start = FindInitialTransition();
-			CurrentState = start.Destination;
 			OnStart(value);
-			CurrentState.OnStateEnter(value, start);
-			OnStateEnter(value, CurrentState, start);
-			var transition = Idle(start, value, principal);
-			CurrentState.OnStateEntered(value, transition, principal);
-			OnStateEntered(value, CurrentState, transition);
-			if (IsFinalState())
-				OnFinish(value);
+
+			Continue(start, value, principal);
 		}
 
-		public bool OnEvent(Token? @event, T value, IPrincipal? principal = null)
+		public bool OnTransitionEvent(TransitionEvent<T> @event, T value, IPrincipal? principal = null)
 		{
-			if (CurrentState.IsEmpty)
-				return false;
+			if (@event == null)
+				throw new ArgumentNullException(nameof(@event));
+			if (value == null)
+				throw new ArgumentNullException(nameof(value));
 
-			bool moved = false;
+			if (@event.Chart != this)
+				return OnTransitionEventSubcharts(@event, value, principal);
+
+			if (@event.Transition?.Source != CurrentState)
+				throw new ArgumentOutOfRangeException(nameof(@event), @event, "Event.Transition.Source is not equal to the current state.");
+			if (!_treansitions.TryGetValue(CurrentState, out var transitions) || !transitions.Contains(@event.Transition))
+				throw new ArgumentOutOfRangeException(nameof(@event), @event, "Specified Event.Transition is not in the list of availabe transitions.");
+
+			Continue(@event.Transition, value, principal);
+			return true;
+		}
+
+		private bool OnTransitionEventSubcharts(TransitionEvent<T> @event, T value, IPrincipal? principal)
+		{
 			foreach (var item in CurrentState.Subcharts)
 			{
-				moved |= item.OnEvent(@event, value, principal);
-			}
-			if (moved)
-				if (CurrentState.Subcharts.All(o => o.IsFinished))
-					@event = null;
-				else
+				if (item.OnTransitionEvent(@event, value, principal))
+				{
+					TestSubchartsFinished(value, principal);
 					return true;
-
-			State<T> initial = CurrentState;
-			var transition = FindActiveTransition(@event, value, principal);
-			if (transition == null)
-			{
-				if (@event == null || @event == Token.Empty)
-					return moved;
-				transition = FindActiveTransition(Token.Empty, value, principal);
-				if (transition == null)
-					return moved;
+				}
 			}
+			return false;
+		}
 
+		private bool TestSubchartsFinished(T value, IPrincipal? principal)
+		{
+			if (CurrentState.Subcharts.Any(o => !o.IsFinished))
+				return false;
+			var transition = FindActiveTransition(null, value, principal);
+			if (transition == null)
+				return false;
+			Continue(transition, value, principal);
+			return true;
+		}
+
+		private void Continue(Transition<T> transition, T value, IPrincipal? principal)
+		{
 			MoveAlong(transition, value);
 			var transition2 = Idle(transition, value, principal);
 			CurrentState.OnStateEntered(value, transition2, principal);
 			OnStateEntered(value, CurrentState, transition2);
-			if (IsFinalState())
+			if (!ContinueSubcharts(value, principal, transition2.Continues) && IsFinalState())
 				OnFinish(value);
-			return true;
+		}
+
+		private bool ContinueSubcharts(T value, IPrincipal? principal, bool continues)
+		{
+			if (CurrentState.Subcharts.Count == 0)
+				return false;
+			foreach (var item in CurrentState.Subcharts)
+			{
+				if (!continues || !item.IsStarted)
+					item.Start(value);
+			}
+			return TestSubchartsFinished(value, principal);
 		}
 
 		public void Reset()
@@ -304,9 +281,27 @@ namespace Lexxys.States
 			}
 		}
 
-		public IEnumerable<Token> GetActiveActions(T value, IPrincipal? principal = null)
+		public override string ToString()
+		{
+			var text = new StringBuilder();
+			if (Id > 0)
+				text.Append(Id).Append('.');
+			text.Append(Name).Append(' ')
+				.Append(_states.Count).Append(" states, ");
+			if (CurrentState.IsEmpty)
+				text.Append("(empty) not started");
+			else
+				text.Append('(').Append(CurrentState.Id)
+					.Append(' ').Append(CurrentState.Name).Append(')')
+					.Append(IsFinished ? " finished" : " in progress");
+			if (Description != null)
+				text.Append(" - ").Append(Description);
+			return text.ToString();
+		}
+
+		public IEnumerable<TransitionEvent<T>> GetActiveEvents(T value, IPrincipal? principal = null)
 			=> GetActiveTransitions(value, principal)
-				.Select(o => o.Event);
+				.Select(o => new TransitionEvent<T>(this, o));
 
 		public IEnumerable<Transition<T>> GetActiveTransitions(T value, IPrincipal? principal = null)
 			=> GetCurrentTree()
@@ -316,8 +311,6 @@ namespace Lexxys.States
 
 		private StateTree CollectTree(StateTree tree, StateTreeItem? parent)
 		{
-			if (CurrentState.IsEmpty)
-				return tree;
 			var root = new StateTreeItem(parent, this, CurrentState);
 			tree.Add(root);
 			if (CurrentState.Subcharts.Count > 0)
@@ -392,8 +385,6 @@ namespace Lexxys.States
 
 		private Transition<T> Idle(Transition<T> transition, T value, IPrincipal? principal)
 		{
-			if (CurrentState.IsEmpty)
-				return transition;
 			State<T> initial = CurrentState;
 			int limit = _states.Count * 2;
 			Transition<T>? temp;
@@ -401,7 +392,7 @@ namespace Lexxys.States
 			{
 				transition = temp;
 				if (--limit < 0)
-					throw EX.InvalidOperation($"Transition<T> loop for state chart {Name} state {initial.Name}");
+					throw new InvalidOperationException($"Transition<T> loop for state chart {Name} state {initial.Name}");
 				CurrentState.OnStatePassthrough(value, transition);
 				OnStatePassthrough(value, CurrentState, transition);
 				MoveAlong(transition, value);
@@ -409,19 +400,17 @@ namespace Lexxys.States
 			return transition;
 		}
 
-		private bool MoveAlong(Transition<T> transition, T value)
+		private void MoveAlong(Transition<T> transition, T value)
 		{
-			if (CurrentState.IsEmpty)
-				return false;
-			if (transition == null)
-				return false;
-			CurrentState.OnStateExit(value, transition);
-			OnStateExit(value, CurrentState, transition);
+			if (!CurrentState.IsEmpty)
+			{
+				CurrentState.OnStateExit(value, transition);
+				OnStateExit(value, CurrentState, transition);
+			}
 			transition.OnMoveAlong(value);
 			CurrentState = transition.Destination;
 			CurrentState.OnStateEnter(value, transition);
 			OnStateEnter(value, CurrentState, transition);
-			return true;
 		}
 	}
 }

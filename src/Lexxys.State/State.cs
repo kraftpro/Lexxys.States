@@ -7,7 +7,6 @@ using System.Text;
 
 namespace Lexxys.States
 {
-	[DebuggerDisplay("{DebuggerDisplay}")]
 	public class State<T>
 	{
 		public static readonly State<T> Empty = new State<T>();
@@ -37,26 +36,6 @@ namespace Lexxys.States
 		public string? Description => Token.Description;
 		public bool IsEmpty => this == Empty;
 
-		private string DebuggerDisplay
-		{
-			get
-			{
-				var text = new StringBuilder();
-				if (Id > 0)
-					text.Append(Id).Append('.');
-				text.Append(Name);
-				if (Guard != null)
-					text.Append(" [...]");
-				if (Roles.Count > 0)
-					text.Append(" [").Append(String.Join(',', Roles)).Append(']');
-				if (Subcharts.Count > 0)
-					text.Append(" {").Append(String.Join(',', Subcharts.Select(o => o.Name))).Append('}');
-				if (Description != null)
-					text.Append(" - ").Append(Description);
-				return text.ToString();
-			}
-		}
-
 		public event Action<T, State<T>, Transition<T>>? StateEnter;
 		public event Action<T, State<T>, Transition<T>>? StatePassthrough;
 		public event Action<T, State<T>, Transition<T>>? StateEntered;
@@ -71,6 +50,23 @@ namespace Lexxys.States
 			{
 				item.Accept(visitor);
 			}
+		}
+
+		public override string ToString()
+		{
+			var text = new StringBuilder();
+			if (Id > 0)
+				text.Append(Id).Append('.');
+			text.Append(Name);
+			if (Guard != null)
+				text.Append(" [...]");
+			if (Roles.Count > 0)
+				text.Append(" [").Append(String.Join(',', Roles)).Append(']');
+			if (Subcharts.Count > 0)
+				text.Append(" {").Append(String.Join(',', Subcharts.Select(o => o.Name))).Append('}');
+			if (Description != null)
+				text.Append(" - ").Append(Description);
+			return text.ToString();
 		}
 
 		internal bool CanEnter(T value, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value);

@@ -43,7 +43,7 @@ namespace Lexxys.State.Con
 				}
 
 				System.Console.WriteLine($": {String.Join(", ", machine.GetCurrentTree().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
-				var actions = machine.GetActiveActions(value, user).ToList();
+				var actions = machine.GetActiveEvents(value, user).ToList();
 				if (actions.Count == 0)
 				{
 					System.Console.WriteLine("Exiting");
@@ -59,7 +59,7 @@ namespace Lexxys.State.Con
 					System.Console.Write(">");
 					k = System.Console.ReadLine().AsInt32(0) - 1;
 				}
-				machine.OnEvent(actions[k], value, user);
+				machine.OnTransitionEvent(actions[k], value, user);
 
 				if (auto != null)
 				{
