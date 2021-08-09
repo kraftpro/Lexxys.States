@@ -13,7 +13,7 @@ namespace Lexxys.State.Tests
 		[TestMethod]
 		public void CreateTest()
 		{
-			var chart = CreateLoginChart();
+			var chart = Charts.CreateLoginChart();
 			Assert.IsNotNull(chart);
 			Assert.IsFalse(chart.IsInProgress);
 			Assert.IsFalse(chart.IsFinished);
@@ -23,7 +23,7 @@ namespace Lexxys.State.Tests
 		public void StartTest()
 		{
 			var x = new Login(true);
-			var chart = CreateLoginChart();
+			var chart = Charts.CreateLoginChart();
 			chart.Start(x);
 			Assert.IsTrue(chart.IsInProgress);
 		}
@@ -32,10 +32,10 @@ namespace Lexxys.State.Tests
 		public void StartWithoutStartTest()
 		{
 			var x = new Login(true);
-			var chart = CreateLoginChart();
+			var chart = Charts.CreateLoginChart();
 			var start = chart.GetActiveEvents(x).ToList();
 			Assert.AreEqual(1, start.Count);
-			start[0].Execute(x);
+			chart.OnTransitionEvent(start[0], x);
 			Assert.IsTrue(chart.IsInProgress);
 			Assert.AreEqual(nameof(LoginStates.Initialized), chart.CurrentState.Name);
 		}
@@ -44,7 +44,7 @@ namespace Lexxys.State.Tests
 		public void GetActiveEventsTest()
 		{
 			var x = new Login(true);
-			var chart = CreateLoginChart();
+			var chart = Charts.CreateLoginChart();
 			var events = chart.GetActiveEvents(x).ToList();
 			Assert.AreEqual(1, events.Count);
 
@@ -57,57 +57,143 @@ namespace Lexxys.State.Tests
 		public void MoveAlongNameTest()
 		{
 			var x = new Login(true);
-			var chart = CreateLoginChart();
-			var events = chart.GetActiveEvents(x).ToIList();
+			var chart = Charts.CreateLoginChart();
+			var tf = chart.GetTokenFactory();
+			var stf = tf.WithDomain("stt");
+			var ttf = tf.WithDomain("trn");
+
 			chart.Start(x);
-			events = chart.GetActiveEvents(x).ToList();
-			Assert.AreEqual(2, events.Count);
+			var events = chart.GetActiveEvents(x);
 
-			var stf = TokenFactory.Create("statecharts", "Login").WithDomain("stt");
-			var ttf = TokenFactory.Create("statecharts", "Login").WithDomain("trn");
-
-			var en = ttf.Token("Name");
 			var name = events.FirstOrDefault(o => o.Transition.Event == ttf.Token("Name"));
 			Assert.IsNotNull(name);
-			name.Execute(x);
+
+			chart.OnTransitionEvent(name, x);
 			Assert.AreEqual(chart.CurrentState, name.Transition.Destination);
-			var token = stf.Token(LoginStates.NameEntered);
-			Assert.AreEqual(chart.CurrentState.Token, token);
+			Assert.AreEqual(stf.Token(LoginStates.NameEntered), chart.CurrentState.Token);
 		}
 
-		private static Statechart<Login> CreateLoginChart()
+		[TestMethod]
+		public void MoveToTheEndTest()
 		{
-			var login = TokenFactory.Create("statecharts", "Login");
-			var s = login.WithDomain("stt");
-			var t = login.WithDomain("trn");
+			var x = new Login(true);
+			var chart = Charts.CreateLoginChart();
+			var tf = chart.GetTokenFactory();
+			var stf = tf.WithDomain("stt");
+			var ttf = tf.WithDomain("trn");
 
-			var initialized = new State<Login>(s.Token(LoginStates.Initialized, "Initial login state"));
-			var nameEntered = new State<Login>(s.Token(LoginStates.NameEntered, "Name has been entered"));
-			var passwordEntered = new State<Login>(s.Token(LoginStates.PasswordEntered, "Password has been entered"));
-			var nameAndPasswordEntered = new State<Login>(s.Token(LoginStates.NameAndPasswordEntered, "Both name and password are entered"));
-			var authenticated = new State<Login>(s.Token(LoginStates.Authenticated, "The user is authenticated"));
-			var notAuthenticated = new State<Login>(s.Token(LoginStates.NotAuthenticated, "Wrong user name and password combination"));
+			chart.Start(x);
 
-			var start = new Transition<Login>(State<Login>.Empty, initialized);
-			var enterName1 = new Transition<Login>(initialized, nameEntered, t.Token("Name"));
-			var enterParrword1 = new Transition<Login>(initialized, passwordEntered, t.Token("Password"));
+			var evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Name"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			Assert.AreEqual(chart.CurrentState, evt.Transition.Destination);
+			Assert.AreEqual(stf.Token(LoginStates.NameEntered), chart.CurrentState.Token);
 
-			var enterName2 = new Transition<Login>(passwordEntered, nameAndPasswordEntered, t.Token("Name"));
-			var enterParrword2 = new Transition<Login>(nameEntered, nameAndPasswordEntered, t.Token("Password"));
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Password"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			Assert.AreEqual(chart.CurrentState, evt.Transition.Destination);
+			Assert.AreEqual(stf.Token(LoginStates.NameAndPasswordEntered), chart.CurrentState.Token);
 
-			var authenticate1 = new Transition<Login>(nameAndPasswordEntered, authenticated, t.Token("authenticate"),
-				guard: StateCondition.Create<Login>(o => o.Success(), o => Task.FromResult(o.Success())));
-			var authenticate2 = new Transition<Login>(nameAndPasswordEntered, notAuthenticated, t.Token("authenticate"),
-				guard: StateCondition.Create<Login>(o => !o.Success(), o => Task.FromResult(!o.Success())));
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("authenticate"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			Assert.AreEqual(chart.CurrentState, evt.Transition.Destination);
+			Assert.AreEqual(stf.Token(LoginStates.Authenticated), chart.CurrentState.Token);
 
-			var reset1 = new Transition<Login>(nameAndPasswordEntered, initialized, t.Token("Reset"));
-			var reset2 = new Transition<Login>(nameEntered, initialized, t.Token("Reset"));
-			var reset3 = new Transition<Login>(passwordEntered, initialized, t.Token("Reset"));
+			Assert.IsTrue(chart.IsFinished);
+		}
 
-			var loginChart = new Statechart<Login>(TokenFactory.Create("statecharts").Token("Login"),
-				new[] { initialized, nameEntered, passwordEntered, nameAndPasswordEntered, authenticated, notAuthenticated },
-				new[] { start, enterName1, enterName2, enterParrword1, enterParrword2, authenticate1, authenticate2, reset1, reset2, reset3 });
-			return loginChart;
+		[TestMethod]
+		public void ActivateSubchartTest()
+		{
+			var x = new Inside<Login> { Item = new Login(true) };
+			var chart = Charts.CreateLogin2Chart();
+			var tf = chart.GetTokenFactory();
+			var stf = tf.WithDomain("stt");
+			var ttf = tf.WithDomain("trn");
+
+			chart.Start(x);
+
+			var evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Inside"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			Assert.AreEqual(chart.CurrentState, evt.Transition.Destination);
+			Assert.AreEqual(stf.Token(InsideState.Action), chart.CurrentState.Token);
+
+			Assert.AreEqual(1, chart.CurrentState.Charts.Count);
+			var chart2 = chart.CurrentState.Charts[0];
+			Assert.IsFalse(chart2.CurrentState.IsEmpty);
+			Assert.AreEqual(stf.Token(LoginStates.Initialized), chart2.CurrentState.Token);
+		}
+
+		[TestMethod]
+		public void SubchartPassedTest()
+		{
+			var x = new Inside<Login> { Item = new Login(true) };
+			var chart = Charts.CreateLogin2Chart();
+			var tf = chart.GetTokenFactory();
+			var stf = tf.WithDomain("stt");
+			var ttf = tf.WithDomain("trn");
+
+			chart.Start(x);
+
+			var evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Inside"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Name"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Password"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Authenticate"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+
+			Assert.AreEqual(stf.Token(InsideState.Done), chart.CurrentState.Token);
+			Assert.IsTrue(chart.IsFinished);
+		}
+
+		[TestMethod]
+		public void HoldUnholdTest()
+		{
+			var x = new Login(true);
+			var chart = Charts.HoldPattern(TokenFactory.Create("statecharts"), Charts.CreateLoginChart());
+
+			var tf = chart.GetTokenFactory();
+			var stf = tf.WithDomain("stt");
+			var ttf = tf.WithDomain("trn");
+
+			chart.Start(x);
+
+			var evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Resume"));
+			Assert.IsNull(evt);
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Hold"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+
+			var actions = chart.GetActiveEvents(x).ToList();
+			Assert.AreEqual(1, actions.Count);
+			evt = actions.FirstOrDefault(o => o.Transition.Event == ttf.Token("Resume"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+
+
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Name"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Password"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+			evt = chart.GetActiveEvents(x).FirstOrDefault(o => o.Transition.Event == ttf.Token("Authenticate"));
+			Assert.IsNotNull(evt);
+			chart.OnTransitionEvent(evt, x);
+
+			Assert.AreEqual(stf.Token(HoldState.Continues), chart.CurrentState.Token);
+			Assert.IsTrue(chart.IsFinished);
 		}
 	}
 }

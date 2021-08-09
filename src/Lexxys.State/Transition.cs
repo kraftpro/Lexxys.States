@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Security.Principal;
 using System.Text;
-using System.Xml.Linq;
 
 namespace Lexxys.States
 {
@@ -57,24 +55,22 @@ namespace Lexxys.States
 			return text.ToString();
 		}
 
-		public bool CanMoveAlong(T value, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value) && Destination.CanEnter(value, principal);
+		internal bool CanMoveAlong(T value, Statechart<T> statechart, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value, statechart) && Destination.CanEnter(value, statechart, principal);
 
-		internal void OnMoveAlong(T value)
+		internal void OnMoveAlong(T value, Statechart<T> statechart)
 		{
 #if TRACE_EVENTS
 			System.Console.WriteLine($"# {Source.Name}>{Destination.Name} [{Event}]: Action");
 #endif
-			Action?.Invoke(value, Source, this);
+			Action?.Invoke(value, statechart, Source, this);
 		}
 
 		private bool IsInRole(IPrincipal? principal) => principal == null || Roles.Count == 0 || principal.IsInRole(Roles);
 
-		private bool InvokeGuard(T value) => Guard == null || Guard.Invoke(value);
+		private bool InvokeGuard(T value, Statechart<T> statechart) => Guard == null || Guard.Invoke(value, statechart, Source, this);
 	}
 
 	public record TransitionEvent<T>(Statechart<T> Chart, Transition<T> Transition)
 	{
-		public void Execute(T value, IPrincipal? principal = null)
-			=> Chart.OnTransitionEvent(this, value, principal);
 	}
 }

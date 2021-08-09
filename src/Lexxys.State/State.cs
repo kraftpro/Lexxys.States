@@ -11,27 +11,27 @@ namespace Lexxys.States
 	{
 		public static readonly State<T> Empty = new State<T>();
 
-		public Token Token{ get; }
+		public Token Token { get; }
 		public IReadOnlyList<string> Roles { get; }
 		public IStateCondition<T>? Guard { get; }
-		public IReadOnlyList<Statechart<T>> Subcharts { get; }
+		public IReadOnlyList<Statechart<T>> Charts { get; }
 
 		private State()
 		{
 			Token = Token.Empty;
 			Roles = Array.Empty<string>();
-			Subcharts = Array.Empty<Statechart<T>>();
+			Charts = Array.Empty<Statechart<T>>();
 		}
 
-		public State(Token token, IReadOnlyList<Statechart<T>>? subcharts = null, IStateCondition<T>? guard = null, string[]? roles = default)
+		public State(Token token, IReadOnlyList<Statechart<T>>? charts = null, IStateCondition<T>? guard = null, string[]? roles = default)
 		{
 			Token = token ?? throw new ArgumentNullException(nameof(token));
-			Subcharts = subcharts ?? Array.Empty<Statechart<T>>();
+			Charts = charts ?? Array.Empty<Statechart<T>>();
 			Roles = ReadOnly.Wrap(roles, true);
 			Guard = guard;
 		}
 
-		public int? Id => IsEmpty ? null: Token.Id;
+		public int? Id => IsEmpty ? null : Token.Id;
 		public string Name => Token.Name;
 		public string? Description => Token.Description;
 		public bool IsEmpty => this == Empty;
@@ -46,7 +46,7 @@ namespace Lexxys.States
 			if (visitor == null)
 				throw new ArgumentNullException(nameof(visitor));
 			visitor.Visit(this);
-			foreach (var item in Subcharts)
+			foreach (var item in Charts)
 			{
 				item.Accept(visitor);
 			}
@@ -62,18 +62,26 @@ namespace Lexxys.States
 				text.Append(" [...]");
 			if (Roles.Count > 0)
 				text.Append(" [").Append(String.Join(',', Roles)).Append(']');
-			if (Subcharts.Count > 0)
-				text.Append(" {").Append(String.Join(',', Subcharts.Select(o => o.Name))).Append('}');
+			if (Charts.Count > 0)
+				text.Append(" {").Append(String.Join(',', Charts.Select(o => o.Name))).Append('}');
 			if (Description != null)
 				text.Append(" - ").Append(Description);
 			return text.ToString();
 		}
 
-		internal bool CanEnter(T value, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value);
+		public static IStateCondition<T> AllFinishedCondition
+			=> __allFinished;
+		private static readonly IStateCondition<T> __allFinished = StateCondition.Create<T>((o, c, s, t) => s!.Charts.All(x => x.IsFinished));
+
+		public static IStateCondition<T> SomeFinishedCondition
+			=> __someFinished;
+		private static readonly IStateCondition<T> __someFinished = StateCondition.Create<T>((o, c, s, t) => s!.Charts.Count == 0 || s!.Charts.Any(x => x.IsFinished));
+
+		internal bool CanEnter(T value, Statechart<T> statechart, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value, statechart);
 
 		private bool IsInRole(IPrincipal? principal) => principal == null || Roles.Count == 0 || principal.IsInRole(Roles);
 
-		private bool InvokeGuard(T value) => Guard == null || Guard.Invoke(value);
+		private bool InvokeGuard(T value, Statechart<T> statechart) => Guard == null || Guard.Invoke(value, statechart, this, null);
 
 		internal void OnStateEnter(T value, Transition<T> transition)
 		{
@@ -89,7 +97,7 @@ namespace Lexxys.States
 			Console.WriteLine($"# {Name}: Entered");
 #endif
 			StateEntered?.Invoke(value, this, transition);
-			foreach (var chart in Subcharts)
+			foreach (var chart in Charts)
 			{
 				chart.Start(value, principal);
 			}

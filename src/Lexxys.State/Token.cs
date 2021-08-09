@@ -65,12 +65,12 @@ namespace Lexxys.States
 
 		private class TokenScope: ITokenScope
 		{
-			private readonly ConcurrentDictionary<(Token Domain, int Id), Token> _issuedTokens ;
+			private readonly ConcurrentDictionary<(Token Domain, int Id), Token> _tokens;
 
 			public TokenScope(TokenScope? scope = null, Token? domain = null)
 			{
 				Domain = domain ?? Empty;
-				_issuedTokens = scope?._issuedTokens ?? new ConcurrentDictionary<(Token Domain, int Id), Token>();
+				_tokens = scope?._tokens ?? new ConcurrentDictionary<(Token Domain, int Id), Token>();
 			}
 
 			public Token Domain { get; }
@@ -82,7 +82,7 @@ namespace Lexxys.States
 			{
 				if (name == null || (name = name.Trim()).Length == 0)
 					throw new ArgumentNullException(nameof(name));
-				return _issuedTokens.GetOrAdd((domain ?? Domain, id), o => new Token(o.Id, name, description, o.Domain));
+				return _tokens.GetOrAdd((domain ?? Domain, id), o => new Token(o.Id, name, description, o.Domain));
 			}
 
 			public Token Token(string name, string? description = null, Token? domain = null)
@@ -93,7 +93,7 @@ namespace Lexxys.States
 					domain = Domain;
 
 				int index = 0;
-				foreach (var item in _issuedTokens.Where(o => o.Key.Domain == domain))
+				foreach (var item in _tokens.Where(o => o.Key.Domain == domain))
 				{
 					if (String.Equals(item.Value.Name, name, StringComparison.OrdinalIgnoreCase))
 						return item.Value;
@@ -104,46 +104,14 @@ namespace Lexxys.States
 				do
 				{
 					token = new Token(++index, name, description, domain);
-				} while (!_issuedTokens.TryAdd((domain, index), token));
+				} while (!_tokens.TryAdd((domain, index), token));
 				return token;
 			}
 
 			public Token? Find(Token domain, int id)
-				=> _issuedTokens.TryGetValue((domain, id), out var token) ? token: null;
+				=> _tokens.TryGetValue((domain, id), out var token) ? token: null;
 		}
 	}
-
-	//public class TokenType: Token
-	//{
-	//	private readonly ConcurrentDictionary<(int Id, string Name), Token> _tokens;
-
-	//	private TokenType((int Id, string Name) value, string? description, TokenType? type)
-	//		: base(value.Id, value.Name, description, type ?? States.Token.Empty)
-	//		=> _tokens = new ConcurrentDictionary<(int Id, string Name), Token>();
-
-	//	public TokenType(string name, string? description = null, TokenType? type = null)
-	//		: this((0, name), description, type)
-	//	{
-	//	}
-
-	//	public TokenType(int id, string name, string? description = null, TokenType? type = null)
-	//		: this((id, name), description, type)
-	//	{
-	//	}
-
-	//	public TokenType(Enum value, string? description = null, TokenType? type = null)
-	//		: this(ExtractEnum(value), description, type)
-	//	{
-	//	}
-
-	//	public ICollection<Token> Items => _tokens.Values;
-
-	//	public Token Token(int id, string name, string? description)
-	//		=> _tokens.GetOrAdd((id, name), o => new Token(o.Id, o.Name, description, this));
-
-	//	private static (int Id, string Name) ExtractEnum(Enum value)
-	//		=> (((IConvertible)value).ToInt32(null), ((IConvertible)value).ToString(null));
-	//}
 
 	public interface ITokenScope
 	{
@@ -190,7 +158,7 @@ namespace Lexxys.States
 		}
 	}
 
-	public static class ITokenExtensjions
+	public static class ITokenExtensions
 	{
 		public static bool IsEmpty(this Token? token) => token == null || Object.ReferenceEquals(token, Token.Empty);
 		public static bool IsGlobal(this Token? token) => token == null || Object.ReferenceEquals(token.Domain, Token.Empty);

@@ -25,7 +25,7 @@ namespace Lexxys.State.Con
 
 			var exp = TokenFactory.Create("statecharts", "expenses");
 			var tf = TokenFactory.Create(exp, "main");
-			var chart = new StatechartBuilder<Expense>(exp.Token("main"));
+			var chart = StatechartBuilder.Create<Expense>("main");
 			chart
 				.OnEnter((e, s) => e.SetSupper((ExpenseSupper)(int)s))
 				.OnExit((e, s) => e.ExitStep())

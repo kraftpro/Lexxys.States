@@ -3,31 +3,6 @@ using System.Collections.Generic;
 
 namespace Lexxys.State.Tests
 {
-
-	public class Login
-	{
-		private readonly bool _success;
-
-		public Login(bool success)
-		{
-			_success = success;
-		}
-
-		public LoginStates State { get; set; }
-
-		public bool Success() => _success;
-	}
-
-	public enum LoginStates
-	{
-		Initialized = 1,
-		NameEntered,
-		PasswordEntered,
-		NameAndPasswordEntered,
-		Authenticated,
-		NotAuthenticated // WrongNameOrPawword,
-	}
-
 	public class Entity
 	{
 
