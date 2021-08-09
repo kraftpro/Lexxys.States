@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Lexxys.State.Con
+namespace Lexxys.States.Con
 {
 	class Program
 	{

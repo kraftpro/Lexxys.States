@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Lexxys.State.Tests
+namespace Lexxys.States.Tests
 {
 	public class Entity
 	{

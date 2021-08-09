@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Lexxys.State.Con
+namespace Lexxys.States.Con
 {
 	public class Entity
 	{

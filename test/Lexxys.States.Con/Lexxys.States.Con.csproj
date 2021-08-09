@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Lexxys\src\Lexxys\Lexxys.csproj" />
-    <ProjectReference Include="..\Lexxys.State\Lexxys.State.csproj" />
+    <ProjectReference Include="..\..\src\Lexxys.States\Lexxys.States.csproj" />
   </ItemGroup>
 
 </Project>

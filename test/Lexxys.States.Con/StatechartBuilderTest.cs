@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Lexxys.State.Con
+namespace Lexxys.States.Con
 {
 	using States;
 

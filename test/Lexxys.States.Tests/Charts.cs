@@ -4,10 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Lexxys.State.Tests
+namespace Lexxys.States.Tests
 {
-	using States;
-
 	static class Charts
 	{
 		public static Statechart<Login> CreateLoginChart()

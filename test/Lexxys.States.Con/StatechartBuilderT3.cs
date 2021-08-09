@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 using Lexxys;
 
-namespace Lexxys.States
+namespace Lexxys.States.Con
 {
 	//public StatechartBuilder Begin(string name)
 	//{
