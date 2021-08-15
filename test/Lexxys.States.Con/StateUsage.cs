@@ -57,7 +57,7 @@ namespace Lexxys.States.Con
 					System.Console.Write(">");
 					k = System.Console.ReadLine().AsInt32(0) - 1;
 				}
-				machine.OnTransitionEvent(actions[k], value, user);
+				machine.OnEvent(actions[k], value, user);
 
 				if (auto != null)
 				{
@@ -79,13 +79,13 @@ namespace Lexxys.States.Con
 				case "name":
 					// Load/Update states of the statecharts by name;
 					{
-						st.OnLoad += (o, e) =>
+						st.OnLoad += (e, o) =>
 						{
 							o.ChartsByName["main"].SetCurrentState(e.Step1);
 							if (e.Step2 != null)
 								o.ChartsByName["subchart"].SetCurrentState(e.Step2);
 						};
-						st.OnUpdate += (o, e) =>
+						st.OnUpdate += (e, o) =>
 						{
 							switch (o.Name)
 							{
@@ -105,8 +105,8 @@ namespace Lexxys.States.Con
 				case "list":
 					// Load/Update states of the statecharts by list of statesc;
 					{
-						st.OnLoad += (o, e) => Array.ForEach(e.GetState(), s => o.ChartsById[s.ChartId].SetCurrentState(s.ChartState));
-						st.OnUpdate += (o, e) => e.SetState(o.Charts.Select(c => (c.Id, c.CurrentState.Id)));
+						st.OnLoad += (e, o) => Array.ForEach(e.GetState(), s => o.ChartsById[s.ChartId].SetCurrentState(s.ChartState));
+						st.OnUpdate += (e, o) => e.SetState(o.Charts.Select(c => (c.Id, c.CurrentState.Id)));
 					}
 					break;
 
@@ -116,11 +116,11 @@ namespace Lexxys.States.Con
 						var st1 = st.ChartsByName["main"];
 						var st2 = st.ChartsByName["subchart"];
 
-						st1.OnLoad += (o, e) => o.SetCurrentState(e.Step1);
-						st2.OnLoad += (o, e) => o.SetCurrentState(e.Step2);
+						st1.OnLoad += (e, o) => o.SetCurrentState(e.Step1);
+						st2.OnLoad += (e, o) => o.SetCurrentState(e.Step2);
 
-						st1.OnUpdate += (o, e) => e.SetStep1((o.CurrentState?.Id) ?? 0);
-						st2.OnUpdate += (o, e) => e.SetStep2(o.CurrentState?.Id);
+						st1.OnUpdate += (e, o) => e.SetStep1((o.CurrentState?.Id) ?? 0);
+						st2.OnUpdate += (e, o) => e.SetStep2(o.CurrentState?.Id);
 					}
 					break;
 

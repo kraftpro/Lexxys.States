@@ -21,7 +21,7 @@ namespace Lexxys.States
 		public static bool Invoke<T>(this IStateCondition<T> condition, T value, Statechart<T> statechart, State<T>? state, Transition<T>? transition) => condition.GetDelegate().Invoke(value, statechart, state, transition);
 		public static Task<bool> InvokeAsync<T>(this IStateCondition<T> condition, T value, Statechart<T> statechart, State<T>? state, Transition<T>? transition) => condition.GetAsyncDelegate().Invoke(value, statechart, state, transition);
 
-		public static IStateCondition<T> Subcharts<T>(Func<IReadOnlyList<Statechart<T>>, bool> condition) => Create<T>((o, c, s, t) => condition(s!.Charts));
+		public static IStateCondition<T> Subcharts<T>(Func<IReadOnlyCollection<Statechart<T>>, bool> condition) => Create<T>((o, c, s, t) => condition(s!.Charts));
 
 		public static IStateCondition<T> True<T>() => TrueCondition<T>.Instance;
 		public static IStateCondition<T> False<T>() => FalseCondition<T>.Instance;
@@ -31,8 +31,6 @@ namespace Lexxys.States
 		public static IStateCondition<T> Or<T>(IStateCondition<T> left, IStateCondition<T> right) => OrCondition<T>.Create(left, right);
 
 		public static IStateCondition<T> And<T>(IStateCondition<T> left, IStateCondition<T> right) => AndCondition<T>.Create(left, right);
-
-		public static IStateCondition<T> Create<T>(string expression) => RoslynCondition<T>.Create(expression);
 
 		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? expression2 = null)
 		{
@@ -48,32 +46,18 @@ namespace Lexxys.States
 			return new DelegateCondition<T>(expression);
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, State<T>?, bool> expression, Func<T, State<T>?, Task<bool>>? expression2 = null)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, bool> expression, Func<T, Statechart<T>, Task<bool>>? expression2 = null)
 		{
 			if (expression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o,c,s,t) => expression(o,s), expression2 == null ? null: (o,c,s,t) => expression2(o, s));
+			return new DelegateCondition<T>((o,c,s,t) => expression(o,c), expression2 == null ? null: (o,c,s,t) => expression2(o, c));
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, State<T>?, Task<bool>> expression)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, Task<bool>> expression)
 		{
 			if (expression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o, s));
-		}
-
-		public static IStateCondition<T> Create<T>(Func<T, Transition<T>?, bool> expression, Func<T, Transition<T>?, Task<bool>>? expression2 = null)
-		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o, t), expression2 == null ? null : (o, c, s, t) => expression2(o, t));
-		}
-
-		public static IStateCondition<T> Create<T>(Func<T, Transition<T>?, Task<bool>> expression)
-		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o, t));
+			return new DelegateCondition<T>((o, c, s, t) => expression(o, c));
 		}
 
 		public static IStateCondition<T> Create<T>(Func<T, bool> expression, Func<T, Task<bool>>? expression2 = null)
@@ -89,6 +73,8 @@ namespace Lexxys.States
 				throw new ArgumentNullException(nameof(expression));
 			return new DelegateCondition<T>((o, c, s, t) => expression(o));
 		}
+
+		public static IStateCondition<T> CSharpScript<T>(string expression) => RoslynCondition<T>.Create(expression);
 
 		private static bool IsTrue<T>(IStateCondition<T> condition) => condition == TrueCondition<T>.Instance;
 		private static bool IsFalse<T>(IStateCondition<T> condition) => condition == FalseCondition<T>.Instance;
@@ -280,7 +266,7 @@ namespace Lexxys.States
 #if TRACE_ROSLYN
 							Console.WriteLine($"  RoslynAction.Compile '{_expression}' for {typeof(T)}");
 #endif
-							var runner = CSharpScript.Create<bool>(_expression, globalsType: typeof(StateActionGlobals<T>)).CreateDelegate();
+							var runner = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create<bool>(_expression, globalsType: typeof(StateActionGlobals<T>)).CreateDelegate();
 							_asyncPredicate = (o, c, s, t) =>
 							{
 #if TRACE_ROSLYN

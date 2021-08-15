@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Security.Principal;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Lexxys.States
 {
@@ -13,9 +15,9 @@ namespace Lexxys.States
 		public State<T> Source { get; }
 		public State<T> Destination { get; }
 		public bool Continues { get; }
-		public IReadOnlyList<string> Roles { get; }
+		public IReadOnlyCollection<string> Roles { get; }
 
-		public Transition(State<T>? source, State<T> destination, Token? @event = null, bool continues = false, IStateAction<T>? action = null, IStateCondition<T>? guard = null, string[]? roles = default)
+		public Transition(State<T>? source, State<T> destination, Token? @event = null, bool continues = false, IStateAction<T>? action = null, IStateCondition<T>? guard = null, IReadOnlyCollection<string>? roles = default)
 		{
 			if (destination == null)
 				throw new ArgumentNullException(nameof(destination));
@@ -28,7 +30,7 @@ namespace Lexxys.States
 			Continues = continues;
 			Action = action;
 			Guard = guard;
-			Roles = ReadOnly.Wrap(roles, true);
+			Roles = roles ?? Array.Empty<string>();
 		}
 
 		public void Accept(IStatechartVisitor<T> visitor) => visitor.Visit(this);
@@ -55,6 +57,8 @@ namespace Lexxys.States
 			return text.ToString();
 		}
 
+		#region Sync
+
 		internal bool CanMoveAlong(T value, Statechart<T> statechart, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value, statechart) && Destination.CanEnter(value, statechart, principal);
 
 		internal void OnMoveAlong(T value, Statechart<T> statechart)
@@ -68,6 +72,25 @@ namespace Lexxys.States
 		private bool IsInRole(IPrincipal? principal) => principal == null || Roles.Count == 0 || principal.IsInRole(Roles);
 
 		private bool InvokeGuard(T value, Statechart<T> statechart) => Guard == null || Guard.Invoke(value, statechart, Source, this);
+
+		#endregion
+
+		#region Async
+
+		internal async Task<bool> CanMoveAlongAsync(T value, Statechart<T> statechart, IPrincipal? principal) => IsInRole(principal) && await InvokeGuardAsync(value, statechart) && await Destination.CanEnterAsync(value, statechart, principal);
+
+		internal async Task OnMoveAlongAsync(T value, Statechart<T> statechart)
+		{
+#if TRACE_EVENTS
+			System.Console.WriteLine($"# {Source.Name}>{Destination.Name} [{Event}]: Action");
+#endif
+			if (Action != null)
+				await Action.InvokeAsync(value, statechart, Source, this);
+		}
+
+		private async Task<bool> InvokeGuardAsync(T value, Statechart<T> statechart) => Guard == null || await Guard.InvokeAsync(value, statechart, Source, this);
+
+		#endregion
 	}
 
 	public record TransitionEvent<T>(Statechart<T> Chart, Transition<T> Transition)

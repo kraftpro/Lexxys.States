@@ -1,16 +1,21 @@
-﻿using System;
+﻿using Lexxys;
+
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace Lexxys.States
 {
 	public class Token
 	{
 		public static readonly Token Empty = new Token();
+		public const int MinDynamicIndex = 1_000_000_000;
 
 		public int Id { get; }
 		public string Name { get; }
@@ -65,12 +70,13 @@ namespace Lexxys.States
 
 		private class TokenScope: ITokenScope
 		{
-			private readonly ConcurrentDictionary<(Token Domain, int Id), Token> _tokens;
+			private readonly ConcurrentDictionary<Token, TokenCollection> _tokens;
+			private volatile int _index = MinDynamicIndex;
 
 			public TokenScope(TokenScope? scope = null, Token? domain = null)
 			{
 				Domain = domain ?? Empty;
-				_tokens = scope?._tokens ?? new ConcurrentDictionary<(Token Domain, int Id), Token>();
+				_tokens = scope?._tokens ?? new ConcurrentDictionary<Token, TokenCollection>();
 			}
 
 			public Token Domain { get; }
@@ -78,11 +84,23 @@ namespace Lexxys.States
 			public ITokenScope WithDomain(Token domain)
 				=> new TokenScope(this, domain);
 
-			public Token Token(int id, string name, string? description = null, Token? domain = null)
+			public Token? Find(int id, Token? domain = null)
+				=> _tokens.TryGetValue(domain ?? Domain, out var tokens) ? tokens.Items.FirstOrDefault(o => o.Id == id): null;
+
+			public Token Token(int id, string? name, string? description = null, Token? domain = null)
 			{
-				if (name == null || (name = name.Trim()).Length == 0)
-					throw new ArgumentNullException(nameof(name));
-				return _tokens.GetOrAdd((domain ?? Domain, id), o => new Token(o.Id, name, description, o.Domain));
+				if (id >= MinDynamicIndex)
+					throw new ArgumentOutOfRangeException(nameof(id), id, null);
+				if (name != null && (name = name.Trim()).Length == 0)
+					name = null;
+				if (domain == null)
+					domain = Domain;
+				var items = _tokens.GetOrAdd(domain, o
+					=> name == null ?
+						throw new ArgumentNullException(nameof(name)):
+						new TokenCollection(new [] { new Token(id, name, description, domain) }) );
+				return items.GetOrAdd(o => o.Id == id, ()
+					=> new States.Token(id, name ?? throw new ArgumentNullException(nameof(name)), description, domain));
 			}
 
 			public Token Token(string name, string? description = null, Token? domain = null)
@@ -91,25 +109,40 @@ namespace Lexxys.States
 					throw new ArgumentNullException(nameof(name));
 				if (domain == null)
 					domain = Domain;
-
-				int index = 0;
-				foreach (var item in _tokens.Where(o => o.Key.Domain == domain))
-				{
-					if (String.Equals(item.Value.Name, name, StringComparison.OrdinalIgnoreCase))
-						return item.Value;
-					if (index < item.Key.Id)
-						index = item.Key.Id;
-				}
-				Token token;
-				do
-				{
-					token = new Token(++index, name, description, domain);
-				} while (!_tokens.TryAdd((domain, index), token));
-				return token;
+				return Token(o => String.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase), () => new Token(Interlocked.Increment(ref _index), name, description, domain), domain);
 			}
 
-			public Token? Find(Token domain, int id)
-				=> _tokens.TryGetValue((domain, id), out var token) ? token: null;
+			public Token Token(Func<Token, bool> predicate, Func<Token> constructor, Token domain)
+			{
+				var items = _tokens.GetOrAdd(domain, o => new TokenCollection(new[] { constructor() }));
+				return items.GetOrAdd(predicate, constructor);
+			}
+
+			class TokenCollection
+			{
+				volatile public Token[] Items;
+
+				public TokenCollection(Token[] items) => Items = items;
+
+				public Token GetOrAdd(Func<Token, bool> predicate, Func<Token> constructor) 
+				{
+					Token? value = null;
+					for (;;)
+					{
+						var items = Items;
+						var t = items.FirstOrDefault(predicate);
+						if (t != null)
+							return t;
+						var tmp = new Token[items.Length + 1];
+						Array.Copy(items, tmp, items.Length);
+						if (value == null)
+							value = constructor();
+						tmp[tmp.Length - 1] = value;
+						if (Interlocked.CompareExchange(ref Items, tmp, items) == items)
+							return value;
+					}
+				}
+			}
 		}
 	}
 
@@ -117,9 +150,9 @@ namespace Lexxys.States
 	{
 		Token Domain { get; }
 		ITokenScope WithDomain(Token domain);
-		Token Token(int id, string name, string? description = null, Token? domain = null);
+		Token Token(int id, string? name = null, string? description = null, Token? domain = null);
 		Token Token(string name, string? description = null, Token? domain = null);
-		Token? Find(Token domain, int id);
+		Token? Find(int id, Token? domain = null);
 	}
 
 	public static class TokenFactory
@@ -167,7 +200,7 @@ namespace Lexxys.States
 	public static class ITokenScopeExtensions
 	{
 		public static bool IsInScope(this ITokenScope scope, Token token)
-			=> token.IsEmpty() || scope.Find(token.Domain, token.Id) == token;
+			=> token.IsEmpty() || scope.Find(token.Id, token.Domain) == token;
 
 		public static Token Token(this ITokenScope scope, Enum value, string? description = null, Token? domain = null)
 		{

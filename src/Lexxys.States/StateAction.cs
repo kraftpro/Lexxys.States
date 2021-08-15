@@ -1,6 +1,7 @@
 ﻿//#define TRACE_ROSLYN
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -20,8 +21,6 @@ namespace Lexxys.States
 
 		public static IStateAction<T> Empty<T>() => EmptyAction<T>.Instance;
 
-		public static IStateAction<T> Create<T>(string expression) => RoslynAction<T>.Create(expression);
-
 		public static IStateAction<T> Create<T>(Action<T, Statechart<T>, State<T>?, Transition<T>?> expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? asyncExpression = null)
 		{
 			if (expression == null)
@@ -36,32 +35,18 @@ namespace Lexxys.States
 			return new DelegateAction<T>(null, expression);
 		}
 
-		public static IStateAction<T> Create<T>(Action<T, State<T>?> expression, Func<T, State<T>?, Task>? asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T, Statechart<T>> expression, Func<T, Statechart<T>, Task>? asyncExpression = null)
 		{
 			if (expression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>((o,c,s,t) => expression(o, s), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, s));
+			return new DelegateAction<T>((o,c,s,t) => expression(o, c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
 		}
 
-		public static IStateAction<T> Create<T>(Func<T, State<T>?, Task> expression)
+		public static IStateAction<T> Create<T>(Func<T, Statechart<T>, Task> expression)
 		{
 			if (expression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>(null, (o,c,s,t) => expression(o, s));
-		}
-
-		public static IStateAction<T> Create<T>(Action<T, Transition<T>?> expression, Func<T, Transition<T>?, Task>? asyncExpression = null)
-		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>((o, c, s, t) => expression(o, t), asyncExpression == null ? null : (o, c, s, t) => asyncExpression(o, t));
-		}
-
-		public static IStateAction<T> Create<T>(Func<T, Transition<T>?, Task> expression)
-		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>(null, (o, c, s, t) => expression(o, t));
+			return new DelegateAction<T>(null, (o,c,s,t) => expression(o, c));
 		}
 
 		public static IStateAction<T> Create<T>(Action<T> expression, Func<T, Task>? asyncExpression = null)
@@ -77,6 +62,8 @@ namespace Lexxys.States
 				throw new ArgumentNullException(nameof(expression));
 			return new DelegateAction<T>(null, (o, c, s, t) => expression(o));
 		}
+
+		public static IStateAction<T> CSharpScript<T>(string expression) => RoslynAction<T>.Create(expression);
 
 		#region Implemetation: EmptyAction, SimpleAction, RoslynAction
 
@@ -154,7 +141,7 @@ namespace Lexxys.States
 #if TRACE_ROSLYN
 					Console.WriteLine($"  RoslynAction.Compile '{_expression}' for {typeof(T)}");
 #endif
-					var action = CSharpScript.Create(code: _expression, globalsType: typeof(StateActionGlobals<T>))
+					var action = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create(code: _expression, globalsType: typeof(StateActionGlobals<T>))
 						.CreateDelegate();
 					_asyncHandler = (o, c, s, t) =>
 					{
@@ -175,6 +162,87 @@ namespace Lexxys.States
 		}
 
 		#endregion
+	}
+
+	public readonly struct StateActionChain<T>
+	{
+		public static readonly StateActionChain<T> Empty = new StateActionChain<T>();
+		private readonly IStateAction<T>[]? _actions;
+
+		public StateActionChain(params IStateAction<T>[] actions)
+		{
+			_actions = actions;
+		}
+
+		public StateActionChain<T> Add(IStateAction<T>? action)
+		{
+			if (action == null)
+				return this;
+			if (_actions == null || _actions.Length == 0)
+				return new StateActionChain<T>(action);
+			if (Array.IndexOf(_actions, action) >= 0)
+				return this;
+			var actions = new IStateAction<T>[_actions.Length + 1];
+			Array.Copy(_actions, actions, _actions.Length);
+			actions[_actions.Length] = action;
+			return new StateActionChain<T>(actions);
+		}
+
+		public StateActionChain<T> Remove(IStateAction<T>? action)
+		{
+			if (action == null || _actions == null)
+				return this;
+			int i = Array.IndexOf(_actions, action);
+			if (i < 0)
+				return this;
+			if (_actions.Length == 1)
+				return Empty;
+			var actions = new IStateAction<T>[_actions.Length - 1];
+			Array.Copy(_actions, 0, actions, 0, i);
+			Array.Copy(_actions, i + 1, actions, i, actions.Length - i);
+			return new StateActionChain<T>(actions);
+		}
+
+		public StateActionChain<T> Add(Action<T, Statechart<T>, State<T>?, Transition<T>?> action) => Add(StateAction.Create(action));
+
+		public StateActionChain<T> Add(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> action) => Add(StateAction.Create(action));
+
+		public StateActionChain<T> Add((Action<T, Statechart<T>, State<T>?, Transition<T>?> Sync, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> Async) action) => Add(StateAction.Create(action.Sync, action.Async));
+
+		public StateActionChain<T> Add(Action<T, Statechart<T>> action) => Add(StateAction.Create<T>((o, c, s, t) => action(o, c)));
+
+		public StateActionChain<T> Add(Func<T, Statechart<T>, Task> action) => Add(StateAction.Create<T>(action));
+
+		public StateActionChain<T> Add((Action<T, Statechart<T>> Sync, Func<T, Statechart<T>, Task> Async) action) => Add(StateAction.Create<T>(action.Sync, action.Async));
+
+		public void Invoke(T value, Statechart<T> chart, State<T>? state, Transition<T>? transition)
+		{
+			if (_actions == null)
+				return;
+			for (int i = 0; i < _actions.Length; ++i)
+			{
+				_actions[i].Invoke(value, chart, state, transition);
+			}
+		}
+
+		public async Task InvokeAsync(T value, Statechart<T> chart, State<T>? state, Transition<T>? transition)
+		{
+			if (_actions == null)
+				return;
+			for (int i = 0; i < _actions.Length; ++i)
+			{
+				await _actions[i].InvokeAsync(value, chart, state, transition);
+			}
+		}
+
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, IStateAction<T> item) => chain.Add(item);
+		public static StateActionChain<T> operator -(StateActionChain<T> chain, IStateAction<T> item) => chain.Remove(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, Action<T, Statechart<T>, State<T>?, Transition<T>?> item) => chain.Add(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> item) => chain.Add(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, (Action<T, Statechart<T>, State<T>?, Transition<T>?> Sync, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> Async) item) => chain.Add(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, Action<T, Statechart<T>> item) => chain.Add(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, Func<T, Statechart<T>, Task> item) => chain.Add(item);
+		public static StateActionChain<T> operator +(StateActionChain<T> chain, (Action<T, Statechart<T>> Sync, Func<T, Statechart<T>, Task> Async) item) => chain.Add(item);
 	}
 
 	public class StateActionGlobals<T>
