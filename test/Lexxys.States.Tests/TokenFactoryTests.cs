@@ -25,21 +25,26 @@ namespace Lexxys.States.Tests
 		[TestMethod]
 		public void Create2Test()
 		{
-			var scope = TokenFactory.Create("collection", "generic");
-			Assert.IsNotNull(scope);
-			var same = TokenFactory.Create("collection", "generic");
-			Assert.AreEqual(scope, same);
+			var original = TokenFactory.Create("collection", "generic");
+			Assert.IsNotNull(original);
+			var copy = TokenFactory.Create("collection", "generic");
+			Assert.IsNotNull(copy);
+			var t1 = original.Token("token123");
+			var t2 = copy.Token("token123");
+			Assert.AreEqual(t1, t2);
 		}
 
 		[TestMethod]
 		public void Create3Test()
 		{
-			var scope1 = TokenFactory.Create("collection");
-			Assert.IsNotNull(scope1);
-			var scope = TokenFactory.Create(scope1, "generic");
-			Assert.IsNotNull(scope);
-			var same = TokenFactory.Create("collection", "generic");
-			Assert.AreEqual(scope, same);
+			var root = TokenFactory.Create("collection");
+			Assert.IsNotNull(root);
+			var original = TokenFactory.Create(root, "generic");
+			Assert.IsNotNull(original);
+			var copy = TokenFactory.Create("collection", "generic");
+			var t1 = original.Token("token123");
+			var t2 = copy.Token("token123");
+			Assert.AreEqual(t1, t2);
 		}
 	}
 }

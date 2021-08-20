@@ -156,21 +156,6 @@ namespace Lexxys.States
 
 		public void SetCurrentState(Token stateToken) => CurrentState = stateToken.IsEmpty() ? State<T>.Empty : _states.FirstOrDefault(o => o.Token == stateToken) ?? throw new ArgumentOutOfRangeException(nameof(stateToken), stateToken, null);
 
-		//private State<T>? FindState(Token token)
-		//{
-		//	if (token == null)
-		//		throw new ArgumentNullException(nameof(token));
-		//	var chart = FindStatechart(token.Domain);
-		//	if (chart == null)
-		//		return null;
-		//	foreach (var state in chart._states)
-		//	{
-		//		if (state.Token == token)
-		//			return state;
-		//	}
-		//	return null;
-		//}
-
 		public void Start(T value, IPrincipal? principal = null)
 		{
 			Reset();

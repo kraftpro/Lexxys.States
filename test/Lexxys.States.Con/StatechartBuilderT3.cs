@@ -21,57 +21,42 @@ namespace Lexxys.States.Con
 	{
 		public static StatechartBuilder<T> Create<T>(int id, string name, string? description = null)
 		{
-			return new StatechartBuilder<T>(id, name, description, null);
+			return new StatechartBuilder<T>(id, name, TokenFactory.Create("statechart"), description, null);
 		}
 
 		public static StatechartBuilder<T> Create<T>(string name, string? description = null)
 		{
-			return new StatechartBuilder<T>(name, description, null);
-		}
-
-		public static StatechartBuilder<T> Create<T>(Token token)
-		{
-			return new StatechartBuilder<T>(token.Id, token.Name, token.Description, null);
+			return new StatechartBuilder<T>(name, TokenFactory.Create("statechart"), description, null);
 		}
 	}
 
 	public class StatechartBuilder<TEntity>
 	{
-		private static readonly StatechartBuilder<TEntity> Empty = new StatechartBuilder<TEntity>();
 		private readonly IDictionary<Token, StateBuilder> _states;
 
-		private StatechartBuilder()
-		{
-			_states = ReadOnly.Empty<Token, StateBuilder>();
-			TokenScope = TokenFactory.Create(Guid.NewGuid().ToString("N"));
-			Token = Token.Empty;
-			Parent = new StateBuilder(this, Token.Empty);
-			States = ReadOnly.Empty<Token, StateBuilder>();
-		}
-
-		public StatechartBuilder(int id, string name, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(int id, string name, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
-			TokenScope = TokenFactory.Create(Guid.NewGuid().ToString("N"));
-			Token = TokenScope.Token(id, name, description);
+			Token = tokenScope.Token(id, name, description);
+			TokenScope = tokenScope.WithDomain(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
 
-		public StatechartBuilder(string name, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(string name, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
-			TokenScope = TokenFactory.Create(Guid.NewGuid().ToString("N"));
-			Token = TokenScope.Token(name, description);
+			Token = tokenScope.Token(name, description);
+			TokenScope = tokenScope.WithDomain(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
 
-		public StatechartBuilder(Enum value, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(Enum value, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
-			TokenScope = TokenFactory.Create(Guid.NewGuid().ToString("N"));
-			Token = TokenScope.Token(value, description);
+			Token = tokenScope.Token(value, description);
+			TokenScope = tokenScope.WithDomain(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
@@ -81,8 +66,6 @@ namespace Lexxys.States.Con
 		public StateBuilder Parent { get; }
 		public IReadOnlyDictionary<Token, StateBuilder> States { get; }
 
-		public bool IsEmpty => this == Empty;
-
 		public StatechartBuilder<TEntity> Out(out StatechartBuilder<TEntity> value)
 		{
 			value = this;
@@ -91,21 +74,21 @@ namespace Lexxys.States.Con
 
 		#region Events
 
-		public event Action<Statechart<TEntity>, TEntity>? LoadAction;
-		public event Action<Statechart<TEntity>, TEntity>? UpdateAction;
+		public event Action<TEntity, Statechart<TEntity>>? LoadAction;
+		public event Action<TEntity, Statechart<TEntity>>? UpdateAction;
 		public event Action<TEntity, Statechart<TEntity>>? ChartStartAction;
 		public event Action<TEntity, Statechart<TEntity>>? ChartFinishAction;
-		public event Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>>? StateEnterAction;
-		public event Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>>? StateEnteredAction;
-		public event Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>>? StatePassthroughAction;
-		public event Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>>? StateExitAction;
+		public event Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>>? StateEnterAction;
+		public event Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>>? StateEnteredAction;
+		public event Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>>? StatePassthroughAction;
+		public event Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>>? StateExitAction;
 
-		public StatechartBuilder<TEntity> OnLoad(Action<Statechart<TEntity>, TEntity> action)
+		public StatechartBuilder<TEntity> OnLoad(Action<TEntity, Statechart<TEntity>> action)
 		{
 			LoadAction += action;
 			return this;
 		}
-		public StatechartBuilder<TEntity> OnUpdate(Action<Statechart<TEntity>, TEntity> action)
+		public StatechartBuilder<TEntity> OnUpdate(Action<TEntity, Statechart<TEntity>> action)
 		{
 			UpdateAction += action;
 			return this;
@@ -120,22 +103,22 @@ namespace Lexxys.States.Con
 			ChartFinishAction += action;
 			return this;
 		}
-		public StatechartBuilder<TEntity> StateEnter(Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>> action)
+		public StatechartBuilder<TEntity> StateEnter(Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>> action)
 		{
 			StateEnterAction += action;
 			return this;
 		}
-		public StatechartBuilder<TEntity> StateEntered(Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>> action)
+		public StatechartBuilder<TEntity> StateEntered(Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>> action)
 		{
 			StateEnteredAction += action;
 			return this;
 		}
-		public StatechartBuilder<TEntity> StatePassthrough(Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>> action)
+		public StatechartBuilder<TEntity> StatePassthrough(Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>> action)
 		{
 			StatePassthroughAction += action;
 			return this;
 		}
-		public StatechartBuilder<TEntity> StateExit(Action<TEntity, State<TEntity>, Transition<TEntity>, Statechart<TEntity>> action)
+		public StatechartBuilder<TEntity> StateExit(Action<TEntity, Statechart<TEntity>, State<TEntity>, Transition<TEntity>> action)
 		{
 			StateExitAction += action;
 			return this;
@@ -214,15 +197,16 @@ namespace Lexxys.States.Con
 				Subcharts = ReadOnly.Wrap(_subcharts);
 				_roles = new List<string>();
 				Roles = ReadOnly.Wrap(_roles);
+				TokenScope = chart.TokenScope.WithDomain(token);
 			}
+
+			public ITokenScope TokenScope { get; }
 
 			public StatechartBuilder<TEntity> Chart { get; }
 			public Token Token { get; }
 			public IReadOnlyCollection<string> Roles { get; }
 			public IReadOnlyCollection<EventBuilder> Events { get; }
 			public IReadOnlyCollection<StatechartBuilder<TEntity>> Subcharts { get; }
-
-			public bool IsEmpty => Chart.IsEmpty;
 
 			public event Action<TEntity, State<TEntity>, Transition<TEntity>>? StateEnter;
 			public event Action<TEntity, State<TEntity>, Transition<TEntity>>? StatePassthrough;
@@ -267,21 +251,21 @@ namespace Lexxys.States.Con
 
 			public StatechartBuilder<TEntity> Begin(int id, string name, string? description)
 			{
-				var chart = new StatechartBuilder<TEntity>(id, name, description, this);
+				var chart = new StatechartBuilder<TEntity>(id, name, TokenScope, description, this);
 				_subcharts.Add(chart);
 				return chart;
 			}
 
 			public StatechartBuilder<TEntity> Begin(string name, string? description)
 			{
-				var chart = new StatechartBuilder<TEntity>(name, description, this);
+				var chart = new StatechartBuilder<TEntity>(name, TokenScope, description, this);
 				_subcharts.Add(chart);
 				return chart;
 			}
 
 			public StatechartBuilder<TEntity> Begin(Enum value, string? description)
 			{
-				var chart = new StatechartBuilder<TEntity>(value, description, this);
+				var chart = new StatechartBuilder<TEntity>(value, TokenScope, description, this);
 				_subcharts.Add(chart);
 				return chart;
 			}

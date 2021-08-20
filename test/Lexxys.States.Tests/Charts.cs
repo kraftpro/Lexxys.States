@@ -18,8 +18,8 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> LoginPattern<T>(ITokenScope root, Func<T, bool> success)
 		{
 			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
-			var s = scope.WithDomain("stt");
-			var t = scope.WithDomain("trn");
+			var s = scope;
+			var t = scope.WithTransitionDomain();
 
 			var initialized = new State<T>(s.Token(LoginStates.Initialized, "Initial login state"));
 			var nameEntered = new State<T>(s.Token(LoginStates.NameEntered, "Name has been entered"));
@@ -53,8 +53,8 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> InsidePattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
-			var s = scope.WithDomain("stt");
-			var t = scope.WithDomain("trn");
+			var s = scope;
+			var t = scope.WithTransitionDomain();
 
 			var s1 = new State<T>(s.Token(InsideState.Desition, "Inside initial state"));
 			var s2 = new State<T>(s.Token(InsideState.Action, "Inside action state"), charts: new[] { chart });
@@ -73,8 +73,8 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> HoldPattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
-			var s = scope.WithDomain("stt");
-			var t = scope.WithDomain("trn");
+			var s = scope;
+			var t = scope.WithTransitionDomain();
 
 			var s1 = new State<T>(s.Token(HoldState.Running, "Running state"), charts: new[] { chart });
 			var s2 = new State<T>(s.Token(HoldState.Hold, "Hold state"));
@@ -90,7 +90,7 @@ namespace Lexxys.States.Tests
 		}
 
 		public static ITokenScope GetTokenFactory<T>(this Statechart<T> statechart)
-			=> TokenFactory.Create("statecharts", typeof(T).GetTypeName());
+			=> TokenFactory.Create("statecharts").WithDomain(typeof(T).GetTypeName());
 	}
 
 	public enum HoldState

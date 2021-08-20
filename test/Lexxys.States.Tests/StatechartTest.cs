@@ -57,8 +57,8 @@ namespace Lexxys.States.Tests
 			var x = new Login(true);
 			var chart = Charts.CreateLoginChart();
 			var tf = chart.GetTokenFactory();
-			var stf = tf.WithDomain("stt");
-			var ttf = tf.WithDomain("trn");
+			var stf = tf;
+			var ttf = tf.WithTransitionDomain();
 
 			chart.Start(x);
 			var events = chart.GetActiveEvents(x);
@@ -77,8 +77,8 @@ namespace Lexxys.States.Tests
 			var x = new Login(true);
 			var chart = Charts.CreateLoginChart();
 			var tf = chart.GetTokenFactory();
-			var stf = tf.WithDomain("stt");
-			var ttf = tf.WithDomain("trn");
+			var stf = tf;
+			var ttf = tf.WithTransitionDomain();
 
 			chart.Start(x);
 
@@ -109,8 +109,8 @@ namespace Lexxys.States.Tests
 			var x = new Inside<Login> { Item = new Login(true) };
 			var chart = Charts.CreateLogin2Chart();
 			var tf = chart.GetTokenFactory();
-			var stf = tf.WithDomain("stt");
-			var ttf = tf.WithDomain("trn");
+			var stf = tf;
+			var ttf = tf.WithTransitionDomain();
 
 			chart.Start(x);
 
@@ -133,8 +133,8 @@ namespace Lexxys.States.Tests
 			var x = new Inside<Login> { Item = new Login(true) };
 			var chart = Charts.CreateLogin2Chart();
 			var tf = chart.GetTokenFactory();
-			var stf = tf.WithDomain("stt");
-			var ttf = tf.WithDomain("trn");
+			var stf = tf;
+			var ttf = tf.WithTransitionDomain();
 
 			chart.Start(x);
 
@@ -163,8 +163,8 @@ namespace Lexxys.States.Tests
 			var chart = Charts.HoldPattern(TokenFactory.Create("statecharts"), Charts.CreateLoginChart());
 
 			var tf = chart.GetTokenFactory();
-			var stf = tf.WithDomain("stt");
-			var ttf = tf.WithDomain("trn");
+			var stf = tf;
+			var ttf = tf.WithTransitionDomain();
 
 			chart.Start(x);
 
