@@ -1,10 +1,9 @@
-﻿
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.States.Tests
 {
 	[TestClass]
-	public class TokenFactoryTests
+	public class TokenFactoryTest
 	{
 		[TestMethod]
 		public void CreateFactoryTest()

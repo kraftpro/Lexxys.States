@@ -1,6 +1,4 @@
-﻿using Lexxys;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace Lexxys.States
 {
+	using Xml;
+
 	public class StatechartConfig
 	{
 		public int? Id { get; }
@@ -85,6 +85,79 @@ namespace Lexxys.States
 		static Token CreateToken(ITokenScope scope, int? id, string name, string? description)
 		{
 			return id == null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
+		}
+
+		public static StatechartConfig? FromXml(XmlLiteNode node)
+		{
+			if (node == null || node.IsEmpty)
+				return null;
+
+			List<StateConfig> states = new List<StateConfig>();
+			List<TransitionConfig> transitions = new List<TransitionConfig>();
+
+			foreach (var state in node.Where("state"))
+			{
+				List<StatechartConfig>? charts = null;
+				foreach (var xml in state.Where("statechart"))
+				{
+					var chart = FromXml(xml);
+					if (chart != null)
+					{
+						if (charts == null)
+							charts = new List<StatechartConfig>();
+						charts.Add(chart);
+					}
+				}
+				var stateConfig = new StateConfig(
+					id: state["id"].AsInt32(null),
+					name: state["name"],
+					description: state["description"],
+					guard: state["guard"],
+					stateEnter: state["stateEnter"],
+					statePassthrough: state["statePassthrough"],
+					stateEntered: state["stateEntered"],
+					stateExit: state["stateExit"],
+					roles: state["role"]?.Split(',').Select(o => o.Trim()).Where(o => !String.IsNullOrEmpty(o)).ToList(),
+					charts: charts
+					);
+				states.Add(stateConfig);
+
+				foreach (var transition in state.Where("transition"))
+				{
+					if (String.IsNullOrEmpty(transition["destination"]))
+						continue;
+					var transitionConfig = new TransitionConfig(
+						id: transition["id"].AsInt32(null),
+						name: transition["name"] ?? transition["event"],
+						description: transition["description"],
+						source: state["name"] ?? state["id"],
+						destination: transition["destination"] ?? transition["target"],
+						guard: transition["guard"],
+						action: transition["action"],
+						continues: transition["continues"].AsBoolean(false),
+						roles: state["role"]?.Split(',').Select(o => o.Trim()).Where(o => !String.IsNullOrEmpty(o)).ToList()
+						);
+					transitions.Add(transitionConfig);
+				}
+
+				if (state["initial"].AsBoolean(false))
+					transitions.Add(new TransitionConfig(destination: state["name"] ?? state["id"]));
+			}
+
+			return new StatechartConfig(
+				id: node["id"].AsInt32(null),
+				name: node["name"] ?? node.Name,
+				description: node["description"],
+				onLoad: node["onLoad"],
+				onUpdate: node["onUpdate"],
+				chartStart: node["chartStart"],
+				chartFinish: node["chartFinish"],
+				stateEnter: node["stateEnter"],
+				stateEntered: node["stateEntered"],
+				statePassthrough: node["statePassthrough"],
+				stateExit: node["stateExit"],
+				states: states,
+				transitions: transitions);
 		}
 	}
 
@@ -174,6 +247,11 @@ namespace Lexxys.States
 		public bool Continues { get; }
 		public IReadOnlyCollection<string>? Roles { get; }
 
+		public TransitionConfig(string destination)
+		{
+			Destination = destination;
+		}
+
 		public TransitionConfig(int? id, string? name, string? description, string? source, string destination, string? guard, string? action, bool continues, IReadOnlyCollection<string>? roles)
 		{
 			if (destination == null || (destination = destination.Trim()).Length == 0)
@@ -204,7 +282,8 @@ namespace Lexxys.States
 
 		private static State<T> FindState<T>(string reference, IReadOnlyCollection<State<T>> states)
 		{
-			var state = states.FirstOrDefault(o => String.Equals(o.Name, reference, StringComparison.OrdinalIgnoreCase));
+			int? intReference = int.TryParse(reference, out var id) ? id: null;
+			var state = states.FirstOrDefault(o => String.Equals(o.Name, reference, StringComparison.OrdinalIgnoreCase) || o.Token.Id == intReference);
 			if (state == null)
 				throw new InvalidOperationException($"Cannot find state \"{reference}\".");
 			return state;
