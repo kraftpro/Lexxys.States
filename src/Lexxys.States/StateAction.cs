@@ -21,46 +21,46 @@ namespace Lexxys.States
 
 		public static IStateAction<T> Empty<T>() => EmptyAction<T>.Instance;
 
-		public static IStateAction<T> Create<T>(Action<T, Statechart<T>, State<T>?, Transition<T>?> expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T, Statechart<T>, State<T>?, Transition<T>?>? expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
 			return new DelegateAction<T>(expression, asyncExpression);
 		}
 
-		public static IStateAction<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> expression)
+		public static IStateAction<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>(null, expression);
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateAction<T>(null, asyncExpression);
 		}
 
-		public static IStateAction<T> Create<T>(Action<T, Statechart<T>> expression, Func<T, Statechart<T>, Task>? asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T, Statechart<T>>? expression, Func<T, Statechart<T>, Task>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>((o,c,s,t) => expression(o, c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
+			return new DelegateAction<T>(expression == null ? null: (o,c,s,t) => expression(o, c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
 		}
 
-		public static IStateAction<T> Create<T>(Func<T, Statechart<T>, Task> expression)
+		public static IStateAction<T> Create<T>(Func<T, Statechart<T>, Task> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>(null, (o,c,s,t) => expression(o, c));
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateAction<T>(null, (o,c,s,t) => asyncExpression(o, c));
 		}
 
-		public static IStateAction<T> Create<T>(Action<T> expression, Func<T, Task>? asyncExpression = null)
+		public static IStateAction<T> Create<T>(Action<T>? expression, Func<T, Task>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>((o, c, s, t) => expression(o), asyncExpression == null ? null : (o, c, s, t) => asyncExpression(o));
+			return new DelegateAction<T>(expression == null ? null: (o, c, s, t) => expression(o), asyncExpression == null ? null: (o, c, s, t) => asyncExpression(o));
 		}
 
-		public static IStateAction<T> Create<T>(Func<T, Task> expression)
+		public static IStateAction<T> Create<T>(Func<T, Task> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateAction<T>(null, (o, c, s, t) => expression(o));
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateAction<T>(null, (o, c, s, t) => asyncExpression(o));
 		}
 
 		public static IStateAction<T> CSharpScript<T>(string expression) => RoslynAction<T>.Create(expression);
@@ -89,7 +89,7 @@ namespace Lexxys.States
 			{
 				if (syncAction == null && asyncAction == null)
 					throw new ArgumentNullException(nameof(syncAction));
-				_syncAction = syncAction ?? ((o, c, s, t) => asyncAction!(o, c, s, t).GetAwaiter().GetResult());
+				_syncAction = syncAction ?? ((o, c, s, t) => asyncAction!(o, c, s, t).ConfigureAwait(false).GetAwaiter().GetResult());
 				_asyncAction = asyncAction ?? ((o, c, s, t) => { syncAction!(o, c, s, t); return Task.CompletedTask; });
 			}
 
@@ -247,17 +247,17 @@ namespace Lexxys.States
 
 	public class StateActionGlobals<T>
 	{
-		public readonly T Obj;
-		public readonly Statechart<T> Chart;
-		public readonly State<T>? State;
-		public readonly Transition<T>? Transition;
+		public readonly T obj;
+		public readonly Statechart<T> chart;
+		public readonly State<T>? state;
+		public readonly Transition<T>? transition;
 
 		public StateActionGlobals(T obj, Statechart<T> chart, State<T>? state = null, Transition<T>? transition = null)
 		{
-			Obj = obj;
-			State = state;
-			Chart = chart;
-			Transition = transition;
+			this.obj = obj;
+			this.state = state;
+			this.chart = chart;
+			this.transition = transition;
 		}
 	}
 }

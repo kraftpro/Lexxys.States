@@ -32,46 +32,46 @@ namespace Lexxys.States
 
 		public static IStateCondition<T> And<T>(IStateCondition<T> left, IStateCondition<T> right) => AndCondition<T>.Create(left, right);
 
-		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? expression2 = null)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>(expression, expression2);
+			return new DelegateCondition<T>(expression, asyncExpression);
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> expression)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>(expression);
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateCondition<T>(null, asyncExpression);
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, bool> expression, Func<T, Statechart<T>, Task<bool>>? expression2 = null)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, bool>? expression, Func<T, Statechart<T>, Task<bool>>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o,c,s,t) => expression(o,c), expression2 == null ? null: (o,c,s,t) => expression2(o, c));
+			return new DelegateCondition<T>(expression == null ? null: (o,c,s,t) => expression(o,c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, Task<bool>> expression)
+		public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, Task<bool>> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o, c));
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateCondition<T>(null, (o, c, s, t) => asyncExpression(o, c));
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, bool> expression, Func<T, Task<bool>>? expression2 = null)
+		public static IStateCondition<T> Create<T>(Func<T, bool>? expression, Func<T, Task<bool>>? asyncExpression = null)
 		{
-			if (expression == null)
+			if (expression == null && asyncExpression == null)
 				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o), expression2 == null ? null : (o, c, s, t) => expression2(o));
+			return new DelegateCondition<T>(expression == null ? null: (o, c, s, t) => expression(o), asyncExpression == null ? null: (o, c, s, t) => asyncExpression(o));
 		}
 
-		public static IStateCondition<T> Create<T>(Func<T, Task<bool>> expression)
+		public static IStateCondition<T> Create<T>(Func<T, Task<bool>> asyncExpression)
 		{
-			if (expression == null)
-				throw new ArgumentNullException(nameof(expression));
-			return new DelegateCondition<T>((o, c, s, t) => expression(o));
+			if (asyncExpression == null)
+				throw new ArgumentNullException(nameof(asyncExpression));
+			return new DelegateCondition<T>(null, (o, c, s, t) => asyncExpression(o));
 		}
 
 		public static IStateCondition<T> CSharpScript<T>(string expression) => RoslynCondition<T>.Create(expression);
@@ -192,24 +192,20 @@ namespace Lexxys.States
 
 		private class DelegateCondition<T>: IStateCondition<T>
 		{
-			private readonly Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> _condition;
-			private readonly Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> _condition2;
+			private readonly Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> _syncCondition;
+			private readonly Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> _asyncCondition;
 
-			public DelegateCondition(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> condition, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? condition2 = null)
+			public DelegateCondition(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? syncCondition, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? asyncCondition = null)
 			{
-				_condition = condition ?? throw new ArgumentNullException(nameof(condition));
-				_condition2 = condition2 ?? ((o,c,s,t) => Task.FromResult(condition(o, c, s, t)));
+				if (syncCondition == null && asyncCondition == null)
+					throw new ArgumentNullException(nameof(syncCondition));
+				_syncCondition = syncCondition ?? ((o, c,  s, t) => asyncCondition!(o, c, s, t).ConfigureAwait(false).GetAwaiter().GetResult());
+				_asyncCondition = asyncCondition ?? ((o, c, s, t) => Task.FromResult(syncCondition!(o, c, s, t)));
 			}
 
-			public DelegateCondition(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> condition)
-			{
-				_condition2 = condition ?? throw new ArgumentNullException(nameof(condition));
-				_condition = (o, c, s, t) => condition(o, c, s, t).ConfigureAwait(false).GetAwaiter().GetResult();
-			}
+			public Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> GetDelegate() => _syncCondition;
 
-			public Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> GetDelegate() => _condition;
-
-			public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> GetAsyncDelegate() => _condition2;
+			public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> GetAsyncDelegate() => _asyncCondition;
 
 			public override string ToString()
 			{

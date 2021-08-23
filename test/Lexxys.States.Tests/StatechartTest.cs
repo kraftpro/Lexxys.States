@@ -160,7 +160,7 @@ namespace Lexxys.States.Tests
 		public void HoldUnholdTest()
 		{
 			var x = new Login(true);
-			var chart = Charts.HoldPattern(TokenFactory.Create("statecharts"), Charts.CreateLoginChart());
+			var chart = Charts.HoldPattern(TokenFactory.Create("statechart"), Charts.CreateLoginChart());
 
 			var tf = chart.GetTokenFactory();
 			var stf = tf;

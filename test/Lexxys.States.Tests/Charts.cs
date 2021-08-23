@@ -9,15 +9,16 @@ namespace Lexxys.States.Tests
 	static class Charts
 	{
 		public static Statechart<Login> CreateLoginChart()
-			=> LoginPattern<Login>(TokenFactory.Create("statecharts"), o => o.Success());
+			=> LoginPattern<Login>(TokenFactory.Create("statechart"), o => o.Success());
 
 		public static Statechart<Inside<Login>> CreateLogin2Chart()
-			=> InsidePattern(TokenFactory.Create("statecharts"),
-				LoginPattern<Inside<Login>>(TokenFactory.Create("statecharts"), o => o.Item?.Success() == true));
+			=> InsidePattern(TokenFactory.Create("statechart"),
+				LoginPattern<Inside<Login>>(TokenFactory.Create("statechart"), o => o.Item?.Success() == true));
 
 		public static Statechart<T> LoginPattern<T>(ITokenScope root, Func<T, bool> success)
 		{
-			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
+			var token = root.Token(typeof(T));
+			var scope = root.WithDomain(token);
 			var s = scope;
 			var t = scope.WithTransitionDomain();
 
@@ -44,7 +45,7 @@ namespace Lexxys.States.Tests
 			var reset2 = new Transition<T>(nameEntered, initialized, t.Token("Reset"));
 			var reset3 = new Transition<T>(passwordEntered, initialized, t.Token("Reset"));
 
-			var loginChart = new Statechart<T>(root.Token(typeof(T).Name),
+			var loginChart = new Statechart<T>(token,
 				new[] { initialized, nameEntered, passwordEntered, nameAndPasswordEntered, authenticated, notAuthenticated },
 				new[] { start, enterName1, enterName2, enterParrword1, enterParrword2, authenticate1, authenticate2, reset1, reset2, reset3 });
 			return loginChart;
@@ -52,7 +53,8 @@ namespace Lexxys.States.Tests
 
 		public static Statechart<T> InsidePattern<T>(ITokenScope root, Statechart<T> chart)
 		{
-			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
+			var token = root.Token(typeof(T));
+			var scope = root.WithDomain(token);
 			var s = scope;
 			var t = scope.WithTransitionDomain();
 
@@ -66,13 +68,14 @@ namespace Lexxys.States.Tests
 			var t3 = new Transition<T>(s2, s3, t.Token("Done"));
 			var t4 = new Transition<T>(s2, s3, guard: State<T>.AllFinishedCondition); // auto transition when the subchart is done
 
-			var result = new Statechart<T>(root.Token(typeof(T).Name), new[] {s1, s2, s3 }, new[] { t0, t1, t2, t3, t4 });
+			var result = new Statechart<T>(token, new[] {s1, s2, s3 }, new[] { t0, t1, t2, t3, t4 });
 			return result;
 		}
 
 		public static Statechart<T> HoldPattern<T>(ITokenScope root, Statechart<T> chart)
 		{
-			var scope = TokenFactory.Create(root, typeof(T).GetTypeName());
+			var token = root.Token(typeof(T));
+			var scope = root.WithDomain(token);
 			var s = scope;
 			var t = scope.WithTransitionDomain();
 
@@ -85,12 +88,12 @@ namespace Lexxys.States.Tests
 			var t2 = new Transition<T>(s2, s1, t.Token("Resume"));
 			var t3 = new Transition<T>(s1, s3, guard: State<T>.AllFinishedCondition);
 
-			var result = new Statechart<T>(root.Token(typeof(T).Name), new[] { s1, s2, s3 }, new[] { t0, t1, t2, t3 });
+			var result = new Statechart<T>(token, new[] { s1, s2, s3 }, new[] { t0, t1, t2, t3 });
 			return result;
 		}
 
 		public static ITokenScope GetTokenFactory<T>(this Statechart<T> statechart)
-			=> TokenFactory.Create("statecharts").WithDomain(typeof(T).GetTypeName());
+			=> TokenFactory.Create("statechart").WithDomain(typeof(T));
 	}
 
 	public enum HoldState
@@ -137,45 +140,24 @@ namespace Lexxys.States.Tests
 		public bool Success() => _success;
 	}
 
-	public static class TypeExtensions
+	public class Login2
 	{
-		public static string GetTypeName(this Type type)
+		public bool CredentialsVerified { get; set; }
+		public bool TokenVerified { get; set; }
+
+		public void VerifyCredentials()
 		{
-			if (type == null)
-				throw new ArgumentNullException(nameof(type));
-			if (type.HasElementType)
-				return GetTypeName(type.GetElementType() ?? typeof(void)) + (type.IsArray ? "[]": type.IsByRef ? "^": "*");
-			if (!type.IsGenericType)
-				return __builtinTypes.TryGetValue(type, out var s) ? s: type.Name;
-			var text = new StringBuilder();
-			text.Append(type.Name.Substring(0, type.Name.IndexOf('`')));
-			char c = '<';
-			foreach (var item in type.GetGenericArguments())
-			{
-				text.Append(c).Append(GetTypeName(item));
-				c = ',';
-			}
-			text.Append('>');
-			return text.ToString();
+			Console.WriteLine("VerifyCredentials()");
 		}
 
-		private static Dictionary<Type, string> __builtinTypes = new ()
+		public void SendToken()
 		{
-			{ typeof(void), "void" },
-			{ typeof(bool), "bool" },
-			{ typeof(byte), "byte" },
-			{ typeof(sbyte), "sbyte" },
-			{ typeof(char), "char" },
-			{ typeof(short), "short" },
-			{ typeof(ushort), "ushort" },
-			{ typeof(int), "int" },
-			{ typeof(uint), "uint" },
-			{ typeof(long), "long" },
-			{ typeof(ulong), "ulong" },
-			{ typeof(float), "float" },
-			{ typeof(double), "double" },
-			{ typeof(decimal), "decimal" },
-			{ typeof(string), "string" },
-		};
+			Console.WriteLine("SendToken()");
+		}
+
+		public void VerifyToken()
+		{
+			Console.WriteLine("VerifyToken");
+		}
 	}
 }

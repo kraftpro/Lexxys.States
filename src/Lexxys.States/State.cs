@@ -24,7 +24,7 @@ namespace Lexxys.States
 			Charts = Array.Empty<Statechart<T>>();
 		}
 
-		public State(Token token, IReadOnlyCollection<Statechart<T>>? charts = null, IStateCondition<T>? guard = null, IReadOnlyCollection<string>? roles = default)
+		public State(Token token, IReadOnlyCollection<Statechart<T>>? charts = null, IStateCondition<T>? guard = null, IReadOnlyCollection<string>? roles = null)
 		{
 			Token = token ?? throw new ArgumentNullException(nameof(token));
 			Charts = charts ?? Array.Empty<Statechart<T>>();

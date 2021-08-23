@@ -23,7 +23,7 @@ namespace Lexxys.States.Con
 			//var b2 = new StatechartBuilder<Expense, ExpenseStep, object>();
 			//var b3 = new StatechartBuilder<Expense, ExpenseStep, ExpenseActions>();
 
-			var exp = TokenFactory.Create("statecharts", "expenses");
+			var exp = TokenFactory.Create("statechart", "expenses");
 			var tf = TokenFactory.Create(exp, "main");
 			var chart = StatechartBuilder.Create<Expense>("main");
 			chart

@@ -232,6 +232,11 @@ namespace Lexxys.States
 			return scope.Token(id, name, description, domain);
 		}
 
+		public static Token Token(this ITokenScope scope, Type value, string? description = null, Token? domain = null)
+		{
+			return scope.Token(value.GetTypeName(), description, domain);
+		}
+
 		public static Token Token(this ITokenScope scope, Token token, Token domain)
 		{
 			return scope.Token(token.Id, token.Name, token.Description, domain);
@@ -239,6 +244,9 @@ namespace Lexxys.States
 
 		public static ITokenScope WithDomain(this ITokenScope scope, string domain)
 			=> scope.WithDomain(scope.Token(domain));
+
+		public static ITokenScope WithDomain(this ITokenScope scope, Type domain)
+			=> scope.WithDomain(scope.Token(domain.GetTypeName()));
 
 		public static ITokenScope WithTransitionDomain(this ITokenScope scope)
 			=> scope.WithDomain(scope.Token(TransitionConfig.TokenDomain));
