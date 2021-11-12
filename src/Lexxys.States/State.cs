@@ -65,9 +65,9 @@ namespace Lexxys.States
 			if (Guard != null)
 				text.Append(" [...]");
 			if (Roles.Count > 0)
-				text.Append(" [").Append(String.Join(',', Roles)).Append(']');
+				text.Append(" [").Append(String.Join(",", Roles)).Append(']');
 			if (Charts.Count > 0)
-				text.Append(" {").Append(String.Join(',', Charts.Select(o => o.Name))).Append('}');
+				text.Append(" {").Append(String.Join(",", Charts.Select(o => o.Name))).Append('}');
 			if (Description != null)
 				text.Append(" - ").Append(Description);
 			return text.ToString();

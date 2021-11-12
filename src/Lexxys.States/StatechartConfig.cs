@@ -337,7 +337,7 @@ namespace Lexxys.States
 						name = name.Substring(0, i).Trim();
 					}
 				}
-				else if (name.EndsWith(')') && (i = name.IndexOf('(')) > 0)
+				else if (name.Length > 0 && name[name.Length - 1] == ')' && (i = name.IndexOf('(')) > 0)
 				{
 					if (Int32.TryParse(name.Substring(i + 1, name.Length - i - 2), out var x))
 					{

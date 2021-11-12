@@ -66,7 +66,7 @@ namespace Lexxys.States
 		/// Returns full name of this token.
 		/// </summary>
 		/// <returns></returns>
-		public string FullName() => String.Join('.', GetPath().Select(o => o.Name));
+		public string FullName() => String.Join(".", GetPath().Select(o => o.Name));
 
 		public override string ToString()
 		{
