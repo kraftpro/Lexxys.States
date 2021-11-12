@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
@@ -11,6 +9,9 @@ namespace Lexxys.States
 {
 	public class Statechart<T>
 	{
+		private static Logger Log => __log ??= new Logger(nameof(Statechart<T>));
+		private static Logger? __log;
+
 		private readonly List<State<T>> _states;
 		private readonly Dictionary<State<T>, List<Transition<T>>> _transitions;
 		public State<T> _currentState;
@@ -184,32 +185,36 @@ namespace Lexxys.States
 
 		public void Load(T value)
 		{
-			foreach (var item in Charts)
+			foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
 			{
+				Log.Trace($"{item.Token.FullName()} OnLoad");
 				item.OnLoad.Invoke(value, this, null, null);
 			}
 		}
 
 		public async Task LoadAsync(T value)
 		{
-			foreach (var item in Charts)
+			foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
 			{
+				Log.Trace($"{item.Token.FullName()} OnLoadAsync");
 				await item.OnLoad.InvokeAsync(value, this, null, null);
 			}
 		}
 
 		public void Update(T value)
 		{
-			foreach (var item in Charts)
+			foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
 			{
+				Log.Trace($"{item.Token.FullName()} OnUpdate");
 				item.OnUpdate.Invoke(value, this, null, null);
 			}
 		}
 
 		public async Task UpdateAsync(T value)
 		{
-			foreach (var item in Charts)
+			foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
 			{
+				Log.Trace($"{item.Token.FullName()} OnUpdateAsync");
 				await item.OnUpdate.InvokeAsync(value, this, null, null);
 			}
 		}
@@ -361,17 +366,53 @@ namespace Lexxys.States
 			return TestSubchartsFinished(value, principal);
 		}
 
-		private void OnStateExit(T context, State<T> state, Transition<T> transition) => StateExit.Invoke(context, this, state, transition);
+		private void OnStateExit(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateExit.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateExit)} {state.Token.FullName()}");
+			StateExit.Invoke(context, this, state, transition);
+		}
 
-		private void OnStateEntered(T context, State<T> state, Transition<T> transition) => StateEntered.Invoke(context, this, state, transition);
+		private void OnStateEntered(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateEntered.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateEntered)} {state.Token.FullName()}");
+			StateEntered.Invoke(context, this, state, transition);
+		}
 
-		private void OnStatePassthrough(T context, State<T> state, Transition<T> transition) => StatePassthrough.Invoke(context, this, state, transition);
+		private void OnStatePassthrough(T context, State<T> state, Transition<T> transition)
+		{
+			if (StatePassthrough.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStatePassthrough)} {state.Token.FullName()}");
+			StatePassthrough.Invoke(context, this, state, transition);
+		}
 
-		private void OnStateEnter(T context, State<T> state, Transition<T> transition) => StateEnter.Invoke(context, this, state, transition);
+		private void OnStateEnter(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateEnter.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateEnter)} {state.Token.FullName()}");
+			StateEnter.Invoke(context, this, state, transition);
+		}
 
-		private void OnStart(T context) => ChartStart.Invoke(context, this, null, null);
+		private void OnStart(T context)
+		{
+			if (ChartStart.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStart)} {Token.FullName()}");
+			ChartStart.Invoke(context, this, null, null);
+		}
 
-		private void OnFinish(T context) => ChartFinish.Invoke(context, this, null, null);
+		private void OnFinish(T context)
+		{
+			if (ChartFinish.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnFinish)} {Token.FullName()}");
+			ChartFinish.Invoke(context, this, null, null);
+		}
 
 		private Transition<T> Idle(Transition<T> transition, T value, IPrincipal? principal)
 		{
@@ -473,17 +514,53 @@ namespace Lexxys.States
 			return await TestSubchartsFinishedAsync(value, principal);
 		}
 
-		private async Task OnStateExitAsync(T context, State<T> state, Transition<T> transition) => await StateExit.InvokeAsync(context, this, state, transition);
+		private async Task OnStateExitAsync(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateExit.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateExitAsync)} {state.Token.FullName()}");
+			await StateExit.InvokeAsync(context, this, state, transition);
+		}
 
-		private async Task OnStateEnteredAsync(T context, State<T> state, Transition<T> transition) => await StateEntered.InvokeAsync(context, this, state, transition);
+		private async Task OnStateEnteredAsync(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateEntered.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateEnteredAsync)} {state.Token.FullName()}");
+			await StateEntered.InvokeAsync(context, this, state, transition);
+		}
 
-		private async Task OnStatePassthroughAsync(T context, State<T> state, Transition<T> transition) => await StatePassthrough.InvokeAsync(context, this, state, transition);
+		private async Task OnStatePassthroughAsync(T context, State<T> state, Transition<T> transition)
+		{
+			if (StatePassthrough.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStatePassthroughAsync)} {state.Token.FullName()}");
+			await StatePassthrough.InvokeAsync(context, this, state, transition);
+		}
 
-		private async Task OnStateEnterAsync(T context, State<T> state, Transition<T> transition) => await StateEnter.InvokeAsync(context, this, state, transition);
+		private async Task OnStateEnterAsync(T context, State<T> state, Transition<T> transition)
+		{
+			if (StateEnter.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStateEnterAsync)} {state.Token.FullName()}");
+			await StateEnter.InvokeAsync(context, this, state, transition);
+		}
 
-		private async Task OnStartAsync(T context) => await ChartStart.InvokeAsync(context, this, null, null);
+		private async Task OnStartAsync(T context)
+		{
+			if (ChartStart.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnStartAsync)} {Token.FullName()}");
+			await ChartStart.InvokeAsync(context, this, null, null);
+		}
 
-		private async Task OnFinishAsync(T context) => await ChartFinish.InvokeAsync(context, this, null, null);
+		private async Task OnFinishAsync(T context)
+		{
+			if (ChartFinish.IsEmpty)
+				return;
+			Log.Trace($"Invoke {nameof(OnFinishAsync)} {Token.FullName()}");
+			await ChartFinish.InvokeAsync(context, this, null, null);
+		}
 
 		private async Task<Transition<T>> IdleAsync(Transition<T> transition, T value, IPrincipal? principal)
 		{
@@ -533,7 +610,7 @@ namespace Lexxys.States
 			return tree;
 		}
 
-		public class StateTree : IReadOnlyList<StateTreeItem>
+		public class StateTree: IReadOnlyList<StateTreeItem>
 		{
 			private readonly List<StateTreeItem> _items;
 

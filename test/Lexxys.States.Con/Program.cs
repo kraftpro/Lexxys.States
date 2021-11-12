@@ -7,6 +7,7 @@ namespace Lexxys.States.Con
 		static void Main(string[] args)
 		{
 			Console.WriteLine("Hello World!");
+			StateUsage.TestConsole();
 		}
 	}
 }

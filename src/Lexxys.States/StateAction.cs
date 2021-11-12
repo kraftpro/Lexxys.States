@@ -2,9 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
 
 namespace Lexxys.States
 {
@@ -100,6 +98,9 @@ namespace Lexxys.States
 
 		private class RoslynAction<T>: IStateAction<T>
 		{
+			private static Logger Log => __log ??= new Logger(nameof(RoslynAction<T>));
+			private static Logger? __log;
+
 			private readonly string _expression;
 			private Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? _asyncHandler;
 			private Action<T, Statechart<T>, State<T>?, Transition<T>?>? _syncHandler;
@@ -138,23 +139,17 @@ namespace Lexxys.States
 				{
 					if (_asyncHandler != null)
 						return;
-#if TRACE_ROSLYN
-					Console.WriteLine($"  RoslynAction.Compile '{_expression}' for {typeof(T)}");
-#endif
+					Log.Trace($"Compile '{_expression}'");
 					var action = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create(code: _expression, globalsType: typeof(StateActionGlobals<T>))
 						.CreateDelegate();
 					_asyncHandler = (o, c, s, t) =>
 					{
-#if TRACE_ROSLYN
-						Console.WriteLine($"  RoslynAction.InvokeAsync '{_expression}' with o = {context}, State = {state} and Transition = {transition}");
-#endif
+						Log.Trace($"InvokeAsync '{_expression}' with obj={o}, state={s} and Transition={t}");
 						return action.Invoke(new StateActionGlobals<T>(o, c, s, t));
 					};
 					_syncHandler = (o, c, s, t) =>
 					{
-#if TRACE_ROSLYN
-						Console.WriteLine($"  RoslynAction.Invoke '{_expression}' with o = {context}, State = {state} and Transition = {transition}");
-#endif
+						Log.Trace($"Invoke '{_expression}' with obj={o}, state={s} and Transition={t}");
 						action.Invoke(new StateActionGlobals<T>(o, c, s, t)).GetAwaiter().GetResult();
 					};
 				}
@@ -166,19 +161,16 @@ namespace Lexxys.States
 
 	public readonly struct StateActionChain<T>
 	{
-		public static readonly StateActionChain<T> Empty = new StateActionChain<T>();
 		private readonly IStateAction<T>[]? _actions;
 
-		public StateActionChain(params IStateAction<T>[] actions)
-		{
-			_actions = actions;
-		}
+		private StateActionChain(params IStateAction<T>[] actions)
+			=> _actions = actions;
 
 		public StateActionChain<T> Add(IStateAction<T>? action)
 		{
 			if (action == null)
 				return this;
-			if (_actions == null || _actions.Length == 0)
+			if (_actions == null)
 				return new StateActionChain<T>(action);
 			if (Array.IndexOf(_actions, action) >= 0)
 				return this;
@@ -188,6 +180,8 @@ namespace Lexxys.States
 			return new StateActionChain<T>(actions);
 		}
 
+		public bool IsEmpty => _actions == null || _actions.Length == 0;
+
 		public StateActionChain<T> Remove(IStateAction<T>? action)
 		{
 			if (action == null || _actions == null)
@@ -196,7 +190,7 @@ namespace Lexxys.States
 			if (i < 0)
 				return this;
 			if (_actions.Length == 1)
-				return Empty;
+				return default;
 			var actions = new IStateAction<T>[_actions.Length - 1];
 			Array.Copy(_actions, 0, actions, 0, i);
 			Array.Copy(_actions, i + 1, actions, i, actions.Length - i);

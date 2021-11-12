@@ -15,7 +15,7 @@ namespace Lexxys.States.Tests
 			=> InsidePattern(TokenFactory.Create("statechart"),
 				LoginPattern<Inside<Login>>(TokenFactory.Create("statechart"), o => o.Item?.Success() == true));
 
-		public static Statechart<T> LoginPattern<T>(ITokenScope root, Func<T, bool> success)
+		public static Statechart<T> LoginPattern<T>(ITokenFactory root, Func<T, bool> success)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -51,7 +51,7 @@ namespace Lexxys.States.Tests
 			return loginChart;
 		}
 
-		public static Statechart<T> InsidePattern<T>(ITokenScope root, Statechart<T> chart)
+		public static Statechart<T> InsidePattern<T>(ITokenFactory root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -72,7 +72,7 @@ namespace Lexxys.States.Tests
 			return result;
 		}
 
-		public static Statechart<T> HoldPattern<T>(ITokenScope root, Statechart<T> chart)
+		public static Statechart<T> HoldPattern<T>(ITokenFactory root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -92,7 +92,7 @@ namespace Lexxys.States.Tests
 			return result;
 		}
 
-		public static ITokenScope GetTokenFactory<T>(this Statechart<T> statechart)
+		public static ITokenFactory GetTokenFactory<T>(this Statechart<T> statechart)
 			=> TokenFactory.Create("statechart").WithDomain(typeof(T));
 	}
 

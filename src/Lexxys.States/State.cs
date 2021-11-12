@@ -10,6 +10,9 @@ namespace Lexxys.States
 {
 	public class State<T>
 	{
+		private static Logger Log => __log ??= new Logger(nameof(State<T>));
+		private static Logger? __log;
+
 		public static readonly State<T> Empty = new State<T>();
 
 		public Token Token { get; }
@@ -88,17 +91,13 @@ namespace Lexxys.States
 
 		internal void OnStateEnter(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Enter");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnter)}");
 			StateEnter.Invoke(value, statechart, this, transition);
 		}
 
 		internal void OnStateEntered(T value, Statechart<T> statechart, Transition<T> transition, IPrincipal? principal)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Entered");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEntered)}");
 			StateEntered.Invoke(value, statechart, this, transition);
 			foreach (var chart in Charts)
 			{
@@ -108,17 +107,13 @@ namespace Lexxys.States
 
 		internal void OnStatePassthrough(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Passthrough");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthrough)}");
 			StatePassthrough.Invoke(value, statechart, this, transition);
 		}
 
 		internal void OnStateExit(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Exit");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateExit)}");
 			StateExit.Invoke(value, statechart, this, transition);
 		}
 
@@ -132,17 +127,13 @@ namespace Lexxys.States
 
 		internal async Task OnStateEnterAsync(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Enter");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnterAsync)}");
 			await StateEnter.InvokeAsync(value, statechart, this, transition);
 		}
 
 		internal async Task OnStateEnteredAsync(T value, Statechart<T> statechart, Transition<T> transition, IPrincipal? principal)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Entered");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnteredAsync)}");
 			await StateEntered.InvokeAsync(value, statechart, this, transition);
 			foreach (var chart in Charts)
 			{
@@ -152,17 +143,13 @@ namespace Lexxys.States
 
 		internal async Task OnStatePassthroughAsync(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Passthrough");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthroughAsync)}");
 			await StatePassthrough.InvokeAsync(value, statechart, this, transition);
 		}
 
 		internal async Task OnStateExitAsync(T value, Statechart<T> statechart, Transition<T> transition)
 		{
-#if TRACE_EVENTS
-			Console.WriteLine($"# {Name}: Exit");
-#endif
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateExitAsync)}");
 			await StateExit.InvokeAsync(value, statechart, this, transition);
 		}
 

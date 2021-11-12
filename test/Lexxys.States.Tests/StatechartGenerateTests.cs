@@ -48,7 +48,7 @@ namespace Lexxys.States.Tests
 		}
 
 		// Generated SipleCodeTest
-		public static Statechart<Login> CreateStatechartLogin(ITokenScope root)
+		public static Statechart<Login> CreateStatechartLogin(ITokenFactory root)
 		{
 			var token = root.Token("Login");
 			var s = root.WithDomain(token);
@@ -75,7 +75,7 @@ namespace Lexxys.States.Tests
 		}
 
 		// Generated SubchatsCodeTest
-		public static Statechart<Login2> CreateStatechartLogin2(ITokenScope? root = null)
+		public static Statechart<Login2> CreateStatechartLogin2(ITokenFactory? root = null)
 		{
 			if (root == null)
 				root = TokenFactory.Create("statechart");
@@ -108,7 +108,7 @@ namespace Lexxys.States.Tests
 			return statechart;
 		}
 
-		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenScope root)
+		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenFactory root)
 		{
 			var token = root.Token("TextVerification");
 			var s = root.WithDomain(token);

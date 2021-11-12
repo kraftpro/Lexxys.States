@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Lexxys.States
 {
-	using System.IO;
-using System.Xml.Linq;
-
 	using Xml;
 
 	public class StatechartConfig
@@ -33,8 +31,7 @@ using System.Xml.Linq;
 			if (name == null || (name = name.Trim()).Length == 0)
 				throw new ArgumentNullException(nameof(name));
 
-			Id = id;
-			Name = name;
+			(Id, Name) = FixName(id, name);
 			Description = description;
 			OnLoad = onLoad;
 			OnUpdate = onUpdate;
@@ -51,7 +48,7 @@ using System.Xml.Linq;
 			StateConfig.ValidateTokens(States);
 		}
 
-		public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>>? action = null, Func<string, IStateCondition<T>>? condition = null)
+		public Statechart<T> Create<T>(ITokenFactory? scope = null, Func<string, IStateAction<T>>? action = null, Func<string, IStateCondition<T>>? condition = null)
 		{
 			if (String.IsNullOrEmpty(Name))
 				throw new ArgumentNullException(nameof(scope));
@@ -86,7 +83,7 @@ using System.Xml.Linq;
 				chart.StateExit += action(StateExit);
 			return chart;
 
-			static Token CreateToken(ITokenScope scope, int? id, string name, string? description)
+			static Token CreateToken(ITokenFactory scope, int? id, string name, string? description)
 				=> id == null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
 		}
 
@@ -176,6 +173,8 @@ using System.Xml.Linq;
 
 			static string AA(IEnumerable<string> values) => values?.Any() == true ? "new[] { " + String.Join(", ", values) + " }": "null";
 		}
+
+		internal static (int? Id, string Name) FixName(int? id, string name) => StateConfig.FixName(id, name);
 
 		private static string A(string value, string objName) => StateConfig.A(value, objName);
 		private static string S(string value) => StateConfig.S(value);
@@ -269,8 +268,7 @@ using System.Xml.Linq;
 		{
 			if (name == null || (name = name.Trim()).Length == 0)
 				throw new ArgumentNullException(nameof(name));
-			Id = id;
-			Name = name;
+			(Id, Name) = FixName(id, name);
 			Description = description;
 			Guard = guard;
 			StateEnter = stateEnter;
@@ -281,7 +279,7 @@ using System.Xml.Linq;
 			Charts = charts;
 		}
 
-		public State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
+		public State<T> Create<T>(ITokenFactory scope, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
 		{
 			if (scope == null)
 				throw new ArgumentNullException(nameof(scope));
@@ -318,9 +316,37 @@ using System.Xml.Linq;
 				throw new InvalidOperationException($"State Name value is not unique ({dupName.Key})");
 		}
 
-		static Token CreateToken(ITokenScope scope, int? id, string name, string? description)
+		static Token CreateToken(ITokenFactory scope, int? id, string name, string? description)
 		{
 			return id == null ? scope.Token(name, description): scope.Token(id.GetValueOrDefault(), name, description);
+		}
+
+		internal static (int? Id, string Name) FixName(int? id, string name)
+		{
+			if (name == null)
+				throw new ArgumentNullException(nameof(name));
+
+			if (id == null)
+			{
+				int i = name.IndexOf('.');
+				if (i >= 0)
+				{
+					if (Int32.TryParse(name.Substring(i + 1), out var x))
+					{
+						id = x;
+						name = name.Substring(0, i).Trim();
+					}
+				}
+				else if (name.EndsWith(')') && (i = name.IndexOf('(')) > 0)
+				{
+					if (Int32.TryParse(name.Substring(i + 1, name.Length - i - 2), out var x))
+					{
+						id = x;
+						name = name.Substring(0, i).Trim();
+					}
+				}
+			}
+			return (id, name);
 		}
 
 		internal void GenerateCode(TextWriter writer, string objName, string varName, Dictionary<StatechartConfig, string> chartMethods, string indent)
@@ -412,8 +438,7 @@ using System.Xml.Linq;
 		{
 			if (destination == null || (destination = destination.Trim()).Length == 0)
 				throw new ArgumentNullException(nameof(destination));
-			Id = id;
-			Name = name;
+			(Id, Name) = name == null ? (id, name): FixName(id, name);
 			Description = description;
 			Source = source;
 			Destination = destination;
@@ -423,7 +448,7 @@ using System.Xml.Linq;
 			Roles = roles;
 		}
 
-		public Transition<T> Create<T>(ITokenScope scope, IReadOnlyCollection<State<T>> states, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
+		public Transition<T> Create<T>(ITokenFactory scope, IReadOnlyCollection<State<T>> states, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
 		{
 			var transition = new Transition<T>(
 				source: IsEmptyReference(Source) ? null: FindState(Source!, states),
@@ -435,6 +460,8 @@ using System.Xml.Linq;
 				roles: Roles);
 			return transition;
 		}
+
+		internal static (int? Id, string Name) FixName(int? id, string name) => StateConfig.FixName(id, name);
 
 		internal static bool IsEmptyReference(string? reference) => String.IsNullOrEmpty(reference) || reference == ".";
 
@@ -466,7 +493,7 @@ using System.Xml.Linq;
 			return state.Value ?? $"\"Cannot find state variable for '{reference}'.\"";
 		}
 
-		static Token CreateToken(ITokenScope scope, int? id, string? name, string? description)
+		static Token CreateToken(ITokenFactory scope, int? id, string? name, string? description)
 		{
 			if (id != null)
 				return scope.Token(id.GetValueOrDefault(), name, description, scope.Token(TokenDomain));

@@ -1,0 +1,216 @@
+﻿#database
+#	connection
+#		:server				.
+#//		:server				test
+#		:database			CharityPlanner
+#		:user				sa
+#		:password			post+Office2
+#		:commandTimeout		10m
+#		:connectionTimeout	10s
+#
+#		:batchAudit			1s
+#		:commandAudit		1s
+#	driver	SqlDataAdapter
+
+statecharts
+	%statechart							name
+	#	:id
+	#	:name
+	#	:description
+	#	:onLoad
+	#	:onUpdate
+	#	:chartStart
+	#	:chartFinish
+	#	:stateEnter
+	#	:stateEntered
+	#	:statePassthrough
+	#	:stateExit
+	#	:initialState
+	%statechart(**)/state				name
+	#	:id
+	#	:name
+	#	:description
+	#	:guard
+	#	:stateEnter
+	#	:stateEntered
+	#	:statePassthrough
+	#	:stateExit
+	#	:role
+	#	*statechart
+	#	*transition
+	%statechart(**)/state/transition	name destination
+	#	:id
+	#	:name
+	#	:description
+	#	:source
+	#	:destination
+	#	:guard
+	#	:action
+	#	:continues	(yes/no)
+	#	:role
+
+
+	statechart Order Processing (1)
+		- Draft (10)
+			:stateEnter	obj.ValidateDraft()
+			transition	SubmitToValidation	=> Validation
+				:guard	obj.IsValid
+			transition	Modify Draft		=> Draft
+			transition	Delete				=> Deleted
+
+		- Validating (20)
+			:stateEnter	obj.Validate();
+
+			statechart Validation
+				- Validate Client
+					:stateEnter	obj.ValidateClient()
+					transition
+				- Validate Order Details
+					:stateEnter	obj.ValidateOrder()
+
+				transition	Submit				=> Submition
+					:guard	obj.IsValid
+				transition	Submit				=> Validation
+					:guard	!obj.IsValid
+				transition	Modify				=> Validation
+				transition	Delete				=> Deleted
+
+		- Submition (30)
+			transition	Send To Order Review => Order Review
+			transition	Send To Procedd		=> Order Review
+			transition	Cancel				=> Canceled
+
+		- Order Review (40)
+			
+			
+		- Order Processing (50)
+		- Processed (60)
+		- Deleted (-5)
+		- Canceled (-10)
+		- Declined (-15)
+
+	statechart Expense
+		:start	Submit	// Initial action for statechart
+
+		- Submit
+			:stateEnter	System.Console.WriteLine("Begin submission");
+			:stateExit	System.Console.WriteLine("End submission");
+			transition	Delete			=> Removed			// The action is available globally in subchart
+			transition	*				=> AdminReview		// Action on exiting from subchart
+
+			statechart
+				:initialState	Draft	// Initial action for subchart
+				- Draft
+					transition	SubmitToPca		=> *		// Exit from the subchart
+						:action obj.SendToPcaReview()
+					transition	SubmitToReview	=> Review
+						:action obj.SendToReview()
+
+				- Review
+					transition	Ask				=> ReviewQuestions
+						:action obj.AskQuestion()
+					transition	Approve			=> *
+
+				- ReviewQuestions
+					:stateEnter	System.Console.WriteLine("Waiting for answer");
+					transition	Answer			=> Review
+						:action System.Console.WriteLine("Got answer");
+					transition	-				=> Review
+						:condition	0 == (++obj.Value & 1)
+						:action System.Console.WriteLine("Auto answer");
+
+		- AdminReview
+			transition	Cancel			=> Canceled		// Cancel action is available after Draft
+			transition	*				=> Done			// Done available in subchart 
+			transition	BackToSubmit	=> Submit		//  
+
+			statechart
+				:initialState	PcaReview
+				- PcaReview
+					transition	RequestLr		=> LegalReview
+					transition	Question		=> NeedMoreInfo
+					transition	SubmitForPayment=> FinOpsReview
+					transition	Back			=> Expense.Submit
+
+				- LegalReview
+					transition	Done			=> PcaReview	// override Done action from upper level
+
+				- Questions
+					transition	Ignore			=> PcaReview
+					transition	SubmitAnswer	=> PcaReview
+
+				- FinOpsReview
+					transition	SubmitToReview	=> PcaReview
+					transition	SubmitToProcess	=> *
+
+				- AdminDraft
+					transition	Submit			=> PcaReview
+					transition	SubmitToPayment	=> FinOpsReview
+					transition	Delete			=> Removed
+
+				- NeedMoreInfo
+					transition	ResponseToPca	=> PcaReview
+					transition	Ignore			=> PcaReview
+
+		- Done
+
+		- Canceled
+			:stateEnter obj.Cancel()
+
+		- Removed
+			:stateEnter obj.Delete()
+
+	statechart PositionFile
+		:initialState Group1
+
+		- Ignored
+			transition	Undo	=> Group1
+		- Done
+
+		- Group1
+			transition	Ignore	=>	Ignored
+
+			statechart
+				:initialState	Group2
+
+				- OnHoldWithIssues
+					transition AllManualIssuesClosed	=> Group2
+				- Group2
+					transition	*	=> OnHoldWithIssues
+						:condition	Obj.HasManualIssues
+
+					statechart
+						:initialState	NotMatched
+						- NotMatched
+							transition	-						=> Matched
+								:condition obj.IsMatched
+							transition	ApproveWithDifference	=> Group3.Approved
+
+						- Matched
+							transition	Approve					=> Group3.Approved
+							transition	-						=> NotMatched
+								:condition !obj.IsMatched
+
+						-NotMatched2
+							transition	-						=> Group3
+								:condition	obj.IsMatched
+
+						- Group3
+							transition	*						=> NotMatched2
+
+							statechart
+								:initialState	Approved
+								- Approved
+									transition	*				=> ReadyWithCleanup
+										:condition obj.HasAutomaticIssues
+									transition	*				=> SecondReview
+										:condition obj.SecondReviewRequired
+									transition *				=> Done
+								- ReadyWithCleanup
+									transition	*				=> Approved
+										:condition obj.NoIssues
+								- SecondReview
+									transition	*				=> ReadyWithCleanup
+										:condition obj.HasAutomaticIssues
+									transition ReviewCompleted	=> Done
+								- Done

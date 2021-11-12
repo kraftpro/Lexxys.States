@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
 
 namespace Lexxys.States
 {
@@ -215,6 +214,9 @@ namespace Lexxys.States
 
 		private class RoslynCondition<T>: IStateCondition<T>
 		{
+			private static Logger Log => __log ??= new Logger(nameof(RoslynCondition<T>));
+			private static Logger? __log;
+
 			private readonly string _expression;
 			private Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? _predicate;
 			private Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? _asyncPredicate;
@@ -259,22 +261,17 @@ namespace Lexxys.States
 					{
 						if (_asyncPredicate == null)
 						{
-#if TRACE_ROSLYN
-							Console.WriteLine($"  RoslynAction.Compile '{_expression}' for {typeof(T)}");
-#endif
+							Log.Trace($"Compile '{_expression}'");
+							Console.WriteLine($"Compile '{_expression}'");
 							var runner = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create<bool>(_expression, globalsType: typeof(StateActionGlobals<T>)).CreateDelegate();
 							_asyncPredicate = (o, c, s, t) =>
 							{
-#if TRACE_ROSLYN
-								Console.WriteLine($"  RoslynCondition.Evaluate '{_expression}' on {context ?? "null"}");
-#endif
+								Log.Trace($"InvokeAsync '{_expression}' with obj={o}, state={s} and Transition={t}");
 								return runner.Invoke(new StateActionGlobals<T>(o, c, s, t));
 							};
 							_predicate = (o, c, s, t) =>
 							{
-#if TRACE_ROSLYN
-				Console.WriteLine($"  RoslynCondition.EvaluateAsync '{_expression}' on {context ?? "null"}");
-#endif
+								Log.Trace($"Invoke '{_expression}' with obj={o}, state={s} and Transition={t}");
 								return runner.Invoke(new StateActionGlobals<T>(o, c, s, t)).ConfigureAwait(false).GetAwaiter().GetResult();
 							};
 						}

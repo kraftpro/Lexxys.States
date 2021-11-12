@@ -17,6 +17,15 @@ namespace Lexxys.States.Con
 
 		private static Statechart<Entity> CreateStatechart1()
 		{
+			var t = TokenFactory.Default;
+			var states = new State<Entity>[]
+			{
+				new State<Entity>(t.Token("One")),
+				new State<Entity>(t.Token("Two")),
+				new State<Entity>(t.Token("Three")),
+				new State<Entity>(t.Token("Three.One")),
+			};
+
 			return new Statechart<Entity>(TokenFactory.Default.Token("Entity-Chart"), Array.Empty<State<Entity>>(), Array.Empty<Transition<Entity>>());
 		}
 	}

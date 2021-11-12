@@ -9,6 +9,9 @@ namespace Lexxys.States
 {
 	public class Transition<T>
 	{
+		private static Logger Log => __log ??= new Logger(nameof(Transition<T>));
+		private static Logger? __log;
+
 		public Token Event { get; }
 		public IStateCondition<T>? Guard { get; }
 		public IStateAction<T>? Action { get; }
@@ -63,9 +66,7 @@ namespace Lexxys.States
 
 		internal void OnMoveAlong(T value, Statechart<T> statechart)
 		{
-#if TRACE_EVENTS
-			System.Console.WriteLine($"# {Source.Name}>{Destination.Name} [{Event}]: Action");
-#endif
+			Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlong)} {Source.Name} -> {Destination.Name}");
 			Action?.Invoke(value, statechart, Source, this);
 		}
 
@@ -81,9 +82,7 @@ namespace Lexxys.States
 
 		internal async Task OnMoveAlongAsync(T value, Statechart<T> statechart)
 		{
-#if TRACE_EVENTS
-			System.Console.WriteLine($"# {Source.Name}>{Destination.Name} [{Event}]: Action");
-#endif
+			Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlongAsync)} {Source.Name} -> {Destination.Name}");
 			if (Action != null)
 				await Action.InvokeAsync(value, statechart, Source, this);
 		}
