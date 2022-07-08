@@ -2,9 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.States.Tests
@@ -20,7 +27,7 @@ namespace Lexxys.States.Tests
 		}
 
 		[TestMethod()]
-		public void SimpleCodeTest()
+		public void GenerateSimpleCodeTest()
 		{
 			var chart = ChartConfig.LoadLoginConfig();
 			var text = new StringBuilder();
@@ -34,9 +41,9 @@ namespace Lexxys.States.Tests
 		}
 
 		[TestMethod()]
-		public void SubchatsCodeTest()
+		public void GenerateSubchatsCodeTest()
 		{
-			var chart = Config.GetValue<StatechartConfig>($"statecharts.Login2");
+			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
 			var text = new StringBuilder();
 			using (var writer = new StringWriter(text))
 			{
@@ -47,9 +54,81 @@ namespace Lexxys.States.Tests
 			Assert.IsTrue(code.Length > 0);
 		}
 
-		// Generated SipleCodeTest
-		public static Statechart<Login> CreateStatechartLogin(ITokenFactory root)
+		[TestMethod]
+		public void CanCompileGeneratedCode()
 		{
+			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
+			var text = new StringBuilder();
+			using (var writer = new StringWriter(text))
+			{
+				writer.WriteLine("using Lexxys;");
+				writer.WriteLine("using Lexxys.States;");
+				writer.WriteLine("using Lexxys.States.Tests;");
+				writer.WriteLine("#nullable enable");
+				//writer.WriteLine("namespace Lexxys.States.Tests");
+				//writer.WriteLine("{");
+				writer.WriteLine("  public static partial class StateChartFactory");
+				writer.WriteLine("  {");
+				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", true, indent: "    ", tab: "  ");
+				writer.WriteLine("  }");
+				//writer.WriteLine("}");
+			}
+			var code = text.ToString();
+
+			var references = new List<MetadataReference>
+				{
+					MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+					MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
+					MetadataReference.CreateFromFile(typeof(Login).Assembly.Location),
+				};
+			var entry = Assembly.GetEntryAssembly();
+			if (entry != null)
+				references.AddRange(
+					entry.GetReferencedAssemblies()
+						.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
+					);
+
+			var compilation = CSharpCompilation.Create(Guid.NewGuid().ToString() + ".dll")
+				.WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+				.AddReferences(references)
+				.AddSyntaxTrees(CSharpSyntaxTree.ParseText(code));
+
+			using var stream = new MemoryStream();
+			var result = compilation.Emit(stream);
+
+			Assert.IsTrue(result.Success);
+
+			var asm = Assembly.Load(stream.ToArray());
+			Assert.IsNotNull(asm);
+
+			var types = asm.GetTypes();
+			Assert.IsNotNull(types);
+			Assert.IsTrue(types.Any());
+
+			var factoryType = asm.GetType("StateChartFactory");
+			Assert.IsNotNull(factoryType);
+
+			var method = factoryType.GetMethod("CreateStatechartLogin2");
+			Assert.IsNotNull(method);
+			Assert.AreEqual("CreateStatechartLogin2", method.Name);
+			Assert.AreEqual(typeof(Statechart<Login2>), method.ReturnType);
+		}
+
+		[TestMethod]
+		public void CanGenerateLambda()
+		{
+			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
+			var lambda = config.GenerateLambda<Login2>();
+			Assert.IsNotNull(lambda);
+
+			var statechart = lambda(null);
+			Assert.IsNotNull(statechart);
+		}
+
+		// Generated SipleCodeTest
+		public static Statechart<Login> CreateStatechartLogin(ITokenScope? root = null)
+		{
+			root ??= TokenScope.Create("statechart");
 			var token = root.Token("Login");
 			var s = root.WithDomain(token);
 			var t = s.WithTransitionDomain();
@@ -75,10 +154,9 @@ namespace Lexxys.States.Tests
 		}
 
 		// Generated SubchatsCodeTest
-		public static Statechart<Login2> CreateStatechartLogin2(ITokenFactory? root = null)
+		public static Statechart<Login2> CreateStatechartLogin2(ITokenScope? root = null)
 		{
-			if (root == null)
-				root = TokenFactory.Create("statechart");
+			root ??= TokenScope.Create("statechart");
 			var token = root.Token("Login2");
 			var s = root.WithDomain(token);
 			var t = s.WithTransitionDomain();
@@ -108,7 +186,7 @@ namespace Lexxys.States.Tests
 			return statechart;
 		}
 
-		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenFactory root)
+		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenScope root)
 		{
 			var token = root.Token("TextVerification");
 			var s = root.WithDomain(token);

@@ -3,10 +3,12 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
+    <!--<EnablePreviewFeatures>true</EnablePreviewFeatures>-->
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Lexxys\src\Lexxis.Logging\Lexxys.Logging.csproj" />
     <ProjectReference Include="..\..\..\Lexxys\src\Lexxys\Lexxys.csproj" />
     <ProjectReference Include="..\..\src\Lexxys.States\Lexxys.States.csproj" />
   </ItemGroup>

@@ -214,8 +214,8 @@ namespace Lexxys.States
 
 		private class RoslynCondition<T>: IStateCondition<T>
 		{
-			private static Logger Log => __log ??= new Logger(nameof(RoslynCondition<T>));
-			private static Logger? __log;
+			private static ILogging Log => __log ??= StaticServices.GetLogger<RoslynCondition<T>>();
+			private static ILogging? __log;
 
 			private readonly string _expression;
 			private Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? _predicate;
@@ -228,10 +228,10 @@ namespace Lexxys.States
 
 			public static IStateCondition<T> Create(string expression)
 			{
-				expression = expression.TrimToNull();
-				if (expression == null)
+				var exp = expression.TrimToNull();
+				if (exp == null)
 					throw new ArgumentNullException(nameof(expression));
-				return __compiledConditions.GetOrAdd(expression, CreateRoslyn);
+				return __compiledConditions.GetOrAdd(exp, CreateRoslyn);
 
 				static RoslynCondition<T> CreateRoslyn(string expression) => new RoslynCondition<T>(expression);
 			}

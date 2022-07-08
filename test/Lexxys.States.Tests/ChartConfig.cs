@@ -14,27 +14,27 @@ namespace Lexxys.States.Tests
 	{
 		public static StatechartConfig LoadLoginConfig()
 		{
-			var config = Config.GetValue<StatechartConfig>($"statecharts.Login");
-			return config;
+			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.Login");
+			return config.Value;
 		}
 
 		public static Statechart<Login> LoadLoginChart()
 		{
 			var config = LoadLoginConfig();
-			return config.Create<Login>(TokenFactory.Create("statechart"), SimpleAction<Login>, o => SimpleCondition<Login>(x => x.Contains("true"), o));
+			return config.Create<Login>(TokenScope.Create("statechart"), SimpleAction<Login>, o => SimpleCondition<Login>(x => x.Contains("true"), o));
 		}
 
 		public static Statechart<Login> LoadLoginChartScScript()
 		{
 			var config = LoadLoginConfig();
-			return config.Create<Login>(TokenFactory.Create("statechart"));
+			return config.Create<Login>(TokenScope.Create("statechart"));
 		}
 
 		public static void RegisterConfiguration(string value)
 		{
 			Registered.GetOrAdd(value, o =>
 			{
-				Config.AddConfiguration(new ConfigurationLocator("string:[txt]" + o), null);
+				Config.AddConfiguration(new Uri("string:[txt]/?" + o), null);
 				return true;
 			});
 		}

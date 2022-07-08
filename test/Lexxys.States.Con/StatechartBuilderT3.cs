@@ -9,6 +9,8 @@ using System.Xml.Linq;
 
 using Lexxys;
 
+#pragma warning disable CS0067
+
 namespace Lexxys.States.Con
 {
 	//public StatechartBuilder Begin(string name)
@@ -21,12 +23,12 @@ namespace Lexxys.States.Con
 	{
 		public static StatechartBuilder<T> Create<T>(int id, string name, string? description = null)
 		{
-			return new StatechartBuilder<T>(id, name, TokenFactory.Create("statechart"), description, null);
+			return new StatechartBuilder<T>(id, name, TokenScope.Create("statechart"), description, null);
 		}
 
 		public static StatechartBuilder<T> Create<T>(string name, string? description = null)
 		{
-			return new StatechartBuilder<T>(name, TokenFactory.Create("statechart"), description, null);
+			return new StatechartBuilder<T>(name, TokenScope.Create("statechart"), description, null);
 		}
 	}
 
@@ -34,7 +36,7 @@ namespace Lexxys.States.Con
 	{
 		private readonly IDictionary<Token, StateBuilder> _states;
 
-		public StatechartBuilder(int id, string name, ITokenFactory tokenScope, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(int id, string name, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(id, name, description);
@@ -43,7 +45,7 @@ namespace Lexxys.States.Con
 			States = ReadOnly.Wrap(_states);
 		}
 
-		public StatechartBuilder(string name, ITokenFactory tokenScope, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(string name, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(name, description);
@@ -52,7 +54,7 @@ namespace Lexxys.States.Con
 			States = ReadOnly.Wrap(_states);
 		}
 
-		public StatechartBuilder(Enum value, ITokenFactory tokenScope, string? description = null, StateBuilder? parent = null)
+		public StatechartBuilder(Enum value, ITokenScope tokenScope, string? description = null, StateBuilder? parent = null)
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(value, description);
@@ -62,7 +64,7 @@ namespace Lexxys.States.Con
 		}
 
 		public Token Token { get; }
-		public ITokenFactory TokenScope { get; }
+		public ITokenScope TokenScope { get; }
 		public StateBuilder Parent { get; }
 		public IReadOnlyDictionary<Token, StateBuilder> States { get; }
 
@@ -200,7 +202,7 @@ namespace Lexxys.States.Con
 				TokenScope = chart.TokenScope.WithDomain(token);
 			}
 
-			public ITokenFactory TokenScope { get; }
+			public ITokenScope TokenScope { get; }
 
 			public StatechartBuilder<TEntity> Chart { get; }
 			public Token Token { get; }

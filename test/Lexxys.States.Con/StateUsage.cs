@@ -55,7 +55,8 @@ namespace Lexxys.States.Con
 						System.Console.WriteLine(" {0} - {1}", i + 1, actions[i]);
 					}
 					System.Console.Write(">");
-					k = System.Console.ReadLine().AsInt32(0) - 1;
+					var s = System.Console.ReadLine();
+					k = s.AsInt32(0) - 1;
 				}
 				machine.OnEvent(actions[k], value, user);
 

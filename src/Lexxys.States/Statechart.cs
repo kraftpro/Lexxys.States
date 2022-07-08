@@ -9,8 +9,8 @@ namespace Lexxys.States
 {
 	public class Statechart<T>
 	{
-		private static Logger Log => __log ??= new Logger(nameof(Statechart<T>));
-		private static Logger? __log;
+		private static ILogging Log => __log ??= StaticServices.Create<ILogging<Statechart<T>>>();
+		private static ILogging? __log;
 
 		private readonly List<State<T>> _states;
 		private readonly Dictionary<State<T>, List<Transition<T>>> _transitions;
@@ -115,10 +115,10 @@ namespace Lexxys.States
 		public IReadOnlyList<Statechart<T>> Charts => __charts ??= CollectCharts();
 		private IReadOnlyList<Statechart<T>>? __charts;
 
-		public IReadOnlyDictionary<string, Statechart<T>> ChartsByName => __chartsByName ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Name));
+		public IReadOnlyDictionary<string, Statechart<T>> ChartsByName => __chartsByName ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Name))!;
 		private IReadOnlyDictionary<string, Statechart<T>>? __chartsByName;
 
-		public IReadOnlyDictionary<int, Statechart<T>> ChartsById => __chartsById ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Id));
+		public IReadOnlyDictionary<int, Statechart<T>> ChartsById => __chartsById ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Id))!;
 		private IReadOnlyDictionary<int, Statechart<T>>? __chartsById;
 
 		private IReadOnlyList<Statechart<T>> CollectCharts()
@@ -131,7 +131,7 @@ namespace Lexxys.States
 					list.AddRange(chart.Charts);
 				}
 			}
-			return ReadOnly.Wrap(list);
+			return ReadOnly.Wrap(list)!;
 		}
 
 		public void Accept(IStatechartVisitor<T> visitor)

@@ -9,13 +9,13 @@ namespace Lexxys.States.Tests
 	static class Charts
 	{
 		public static Statechart<Login> CreateLoginChart()
-			=> LoginPattern<Login>(TokenFactory.Create("statechart"), o => o.Success());
+			=> LoginPattern<Login>(TokenScope.Create("statechart"), o => o.Success());
 
 		public static Statechart<Inside<Login>> CreateLogin2Chart()
-			=> InsidePattern(TokenFactory.Create("statechart"),
-				LoginPattern<Inside<Login>>(TokenFactory.Create("statechart"), o => o.Item?.Success() == true));
+			=> InsidePattern(TokenScope.Create("statechart"),
+				LoginPattern<Inside<Login>>(TokenScope.Create("statechart"), o => o.Item?.Success() == true));
 
-		public static Statechart<T> LoginPattern<T>(ITokenFactory root, Func<T, bool> success)
+		public static Statechart<T> LoginPattern<T>(ITokenScope root, Func<T, bool> success)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -51,7 +51,7 @@ namespace Lexxys.States.Tests
 			return loginChart;
 		}
 
-		public static Statechart<T> InsidePattern<T>(ITokenFactory root, Statechart<T> chart)
+		public static Statechart<T> InsidePattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -72,7 +72,7 @@ namespace Lexxys.States.Tests
 			return result;
 		}
 
-		public static Statechart<T> HoldPattern<T>(ITokenFactory root, Statechart<T> chart)
+		public static Statechart<T> HoldPattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
 			var scope = root.WithDomain(token);
@@ -92,8 +92,51 @@ namespace Lexxys.States.Tests
 			return result;
 		}
 
-		public static ITokenFactory GetTokenFactory<T>(this Statechart<T> statechart)
-			=> TokenFactory.Create("statechart").WithDomain(typeof(T));
+		public static ITokenScope GetTokenFactory<T>(this Statechart<T> statechart)
+			=> TokenScope.Create("statechart").WithDomain(typeof(T));
+
+		public static Statechart<T> CreateSampleOne<T>()
+		{
+			var s = TokenScope.Create("statechart", "sample_1");
+			var t = s.WithTransitionDomain();
+			//var s1 = new State<T>(s.Token(1, "Start"));
+			//var s2 = new State<T>(s.Token(2, "Uploading"));
+			//var s3 = new State<T>(s.Token(3, "Aborted"));
+			//var s4 = new State<T>(s.Token(4, "OnHold"));
+
+			var s1_1 = new State<T>(s.Token(SampleOne.Start));
+			var s1_2 = new State<T>(s.Token(SampleOne.Uploading));
+			var s1_3 = new State<T>(s.Token(SampleOne.Aborted));
+			var s1_4 = new State<T>(s.Token(SampleOne.OnHold));
+
+			var s2_1 = new State<T>(s.Token(SampleOneUploading.Waiting));
+			var s2_2 = new State<T>(s.Token(SampleOneUploading.Uploading));
+			var s2_3 = new State<T>(s.Token(SampleOneUploading.Verified));
+
+			var t2_1_2 = new Transition<T>(s2_1, s2_2, t.Token("Upload"), action: StateAction.Create<T>((o, c, s, t) => Console.WriteLine($"{c.Token}: Uploading...")));
+			var t2_2_1 = new Transition<T>(s2_2, s2_1, t.Token("Undo"), action: StateAction.Create<T>((o, c, s, t) => Console.WriteLine($"{c.Token}: Undo upload...")));
+			var t2_2_3 = new Transition<T>(s2_2, s2_3, t.Token("Verify"), action: StateAction.Create<T>((o, c, s, t) => Console.WriteLine($"{c.Token}: Undo upload...")));
+
+			// var c1 = new Statechart<T>(s)
+
+
+			return null!;
+		}
+
+		enum SampleOne
+		{
+			Start = 1,
+			Uploading,
+			Aborted,
+			OnHold
+		}
+
+		enum SampleOneUploading
+		{
+			Waiting = 1,
+			Uploading,
+			Verified,
+		}
 	}
 
 	public enum HoldState

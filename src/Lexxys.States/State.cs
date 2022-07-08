@@ -10,8 +10,8 @@ namespace Lexxys.States
 {
 	public class State<T>
 	{
-		private static Logger Log => __log ??= new Logger(nameof(State<T>));
-		private static Logger? __log;
+		private static ILogging Log => __log ??= StaticServices.Create<ILogging<State<T>>>();
+		private static ILogging? __log;
 
 		public static readonly State<T> Empty = new State<T>();
 

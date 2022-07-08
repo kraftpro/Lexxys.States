@@ -9,8 +9,8 @@ namespace Lexxys.States
 {
 	public class Transition<T>
 	{
-		private static Logger Log => __log ??= new Logger(nameof(Transition<T>));
-		private static Logger? __log;
+		private static ILogging Log => __log ??= StaticServices.Create<ILogging<Transition<T>>>();
+		private static ILogging? __log;
 
 		public Token Event { get; }
 		public IStateCondition<T>? Guard { get; }

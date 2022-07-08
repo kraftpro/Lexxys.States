@@ -98,8 +98,8 @@ namespace Lexxys.States
 
 		private class RoslynAction<T>: IStateAction<T>
 		{
-			private static Logger Log => __log ??= new Logger(nameof(RoslynAction<T>));
-			private static Logger? __log;
+			private static ILogging Log => __log ??= StaticServices.GetLogger<RoslynAction<T>>();
+			private static ILogging? __log;
 
 			private readonly string _expression;
 			private Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? _asyncHandler;
@@ -112,7 +112,7 @@ namespace Lexxys.States
 				_expression = expression;
 			}
 
-			public static IStateAction<T> Create(string expression)
+			public static IStateAction<T> Create(string? expression)
 			{
 				return (expression = expression.TrimToNull()) == null ? Empty<T>():
 					__compiledActions.GetOrAdd(expression, o => new RoslynAction<T>(o));
