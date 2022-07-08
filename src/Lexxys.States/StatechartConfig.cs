@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace Lexxys.States
 {
@@ -202,31 +203,51 @@ namespace Lexxys.States
 					writer.WriteLine("}");
 			}
 			var code = text.ToString();
+#if NET6_0_OR_GREATER
+			var fw = "c";
+#else
+#if NETFRAMEWORK
+			var fw = "a";
+#else
+			var fw = "b";
+#endif
+#endif
 
-			var references = new List<MetadataReference>
+			var name = $"sc{fw}-{GetHash(code)}.dll";
+			var filepath = Path.Combine(Path.GetTempPath(), name);
+			var asm = Factory.TryLoadAssembly(filepath, false);
+			if (asm == null)
+			{
+				var references = new List<MetadataReference>
 				{
 					MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
 					MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
 					MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
 				};
-			var entry = Assembly.GetEntryAssembly();
-			if (entry != null)
-				references.AddRange(
-					entry.GetReferencedAssemblies()
-						.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
-					);
-			var compilation = CSharpCompilation.Create(null)
-				.WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
-				.AddReferences(references)
-				.AddSyntaxTrees(CSharpSyntaxTree.ParseText(code));
+				var entry = Assembly.GetEntryAssembly();
+				if (entry != null)
+					references.AddRange(
+						entry.GetReferencedAssemblies()
+							.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
+						);
+				var compilation = CSharpCompilation.Create(name)
+					.WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+					.AddReferences(references)
+					.AddSyntaxTrees(CSharpSyntaxTree.ParseText(code));
 
-			using var stream = new MemoryStream();
-			var emitResult = compilation.Emit(stream);
-			if (!emitResult.Success)
-				throw new AggregateException("Compilation Error", emitResult.Diagnostics
-					.Select(o => new Exception(o.ToString())));
+				EmitResult emitResult;
+				using (var stream = new FileStream(filepath, FileMode.Create))
+				{
+					emitResult = compilation.Emit(stream);
+				}
+				if (!emitResult.Success)
+					throw new AggregateException("Compilation Error", emitResult.Diagnostics
+						.Select(o => new Exception(o.ToString())));
+				asm = Factory.TryLoadAssembly(filepath, true);
+				if (asm == null)
+					throw new InvalidOperationException($"Cannot create / load assembly {filepath}");
+			}
 
-			var asm = Assembly.Load(stream.ToArray());
 			var factoryType = asm.GetType(className);
 			if (factoryType == null)
 				throw new InvalidOperationException($"Cannot find class {className}.");
@@ -240,6 +261,14 @@ namespace Lexxys.States
 			var lambda = Expression.Lambda<Func<ITokenScope?, Statechart<T>>>(exp, arg).Compile();
 
 			return lambda;
+
+			static string GetHash(string text)
+			{
+				using var hasher = System.Security.Cryptography.SHA1.Create();
+				byte[] bytes = Encoding.Unicode.GetBytes(text);
+				var hash = hasher.ComputeHash(bytes, 0, bytes.Length);
+				return Strings.ToHexString(hash);
+			}
 		}
 
 		internal static (int? Id, string Name) FixName(int? id, string name) => StateConfig.FixName(id, name);
