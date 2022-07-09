@@ -2,16 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Emit;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.States.Tests
@@ -87,6 +82,10 @@ namespace Lexxys.States.Tests
 					entry.GetReferencedAssemblies()
 						.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
 					);
+			var location = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+			var netstandard = Path.Combine(location, "netstandard.dll");
+			if (File.Exists(netstandard))
+				references.Add(MetadataReference.CreateFromFile(netstandard));
 
 			var compilation = CSharpCompilation.Create(Guid.NewGuid().ToString() + ".dll")
 				.WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))

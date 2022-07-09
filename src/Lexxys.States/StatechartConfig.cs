@@ -203,17 +203,16 @@ namespace Lexxys.States
 					writer.WriteLine("}");
 			}
 			var code = text.ToString();
-#if NET6_0_OR_GREATER
-			var fw = "c";
-#else
 #if NETFRAMEWORK
-			var fw = "a";
-#else
-			var fw = "b";
+			const string FW = "f";
 #endif
+#if NETSTANDARD
+			const string FW = "s";
 #endif
-
-			var name = $"sc{fw}-{GetHash(code)}.dll";
+#if NET6_0_OR_GREATER
+			const string FW = "n";
+#endif
+			var name = $"sc{FW}-{GetHash(code)}.dll";
 			var filepath = Path.Combine(Path.GetTempPath(), name);
 			var asm = Factory.TryLoadAssembly(filepath, false);
 			if (asm == null)
@@ -224,6 +223,12 @@ namespace Lexxys.States
 					MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
 					MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
 				};
+#if NETSTANDARD
+				var location = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+				var netstandard = Path.Combine(location, "netstandard.dll");
+				if (File.Exists(netstandard))
+					references.Add(MetadataReference.CreateFromFile(netstandard));
+#endif
 				var entry = Assembly.GetEntryAssembly();
 				if (entry != null)
 					references.AddRange(
