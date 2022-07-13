@@ -38,15 +38,24 @@ namespace Lexxys.States
 			Roles = roles;
 		}
 
-		public Transition<T> Create<T>(ITokenScope scope, IReadOnlyCollection<State<T>> states, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
+		public Transition<T> Create<T>(ITokenScope scope, IReadOnlyCollection<State<T>> states, Func<string, IStateAction<T>> actionBuilder, Func<string, IStateCondition<T>> conditionBuilder)
 		{
+			if (scope == null)
+				throw new ArgumentNullException(nameof(scope));
+			if (states is null)
+				throw new ArgumentNullException(nameof(states));
+			if (actionBuilder == null)
+				throw new ArgumentNullException(nameof(actionBuilder));
+			if (conditionBuilder == null)
+				throw new ArgumentNullException(nameof(conditionBuilder));
+
 			var transition = new Transition<T>(
 				source: IsEmptyReference(Source) ? null: FindState(Source!, states),
 				destination: FindState(Destination, states),
 				@event: CreateToken(scope, Id, Name, Description),
 				continues: Continues,
-				action: String.IsNullOrEmpty(Action) ? null: action(Action!),
-				guard: String.IsNullOrEmpty(Guard) ? null: condition(Guard!),
+				action: String.IsNullOrEmpty(Action) ? null: actionBuilder(Action!),
+				guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
 				roles: Roles);
 			return transition;
 		}

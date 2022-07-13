@@ -40,7 +40,7 @@ namespace Lexxys.States.Con
 					machine.ChartsByName["subchart"].SetCurrentState(value.Step2);
 				}
 
-				System.Console.WriteLine($": {String.Join(", ", machine.GetCurrentTree().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
+				System.Console.WriteLine($": {String.Join(", ", machine.GetActjveStates().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
 				var actions = machine.GetActiveEvents(value, user).ToList();
 				if (actions.Count == 0)
 				{

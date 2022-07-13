@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Lexxys.States
@@ -118,7 +119,8 @@ namespace Lexxys.States
 		public IReadOnlyDictionary<string, Statechart<T>> ChartsByName => __chartsByName ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Name))!;
 		private IReadOnlyDictionary<string, Statechart<T>>? __chartsByName;
 
-		public IReadOnlyDictionary<int, Statechart<T>> ChartsById => __chartsById ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Id))!;
+		public IReadOnlyDictionary<int, Statechart<T>> ChartsById
+			=> __chartsById ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Id))!;
 		private IReadOnlyDictionary<int, Statechart<T>>? __chartsById;
 
 		private IReadOnlyList<Statechart<T>> CollectCharts()
@@ -153,9 +155,14 @@ namespace Lexxys.States
 		private bool IsInFinalState()
 			=> !_transitions.ContainsKey(CurrentState);
 
-		public void SetCurrentState(int? stateId) => CurrentState = stateId is null ? State<T>.Empty : _states.FirstOrDefault(o => o.Id == stateId) ?? throw new ArgumentOutOfRangeException(nameof(stateId), stateId, null);
+		public void SetCurrentState(int? stateId)
+			=> CurrentState = stateId is null ? State<T>.Empty : _states.FirstOrDefault(o => o.Id == stateId) ?? throw new ArgumentOutOfRangeException(nameof(stateId), stateId, null);
 
-		public void SetCurrentState(Token stateToken) => CurrentState = stateToken.IsEmpty() ? State<T>.Empty : _states.FirstOrDefault(o => o.Token == stateToken) ?? throw new ArgumentOutOfRangeException(nameof(stateToken), stateToken, null);
+		public void SetCurrentState(string? stateName)
+			=> CurrentState = stateName is null ? State<T>.Empty : _states.FirstOrDefault(o => o.Name == stateName) ?? throw new ArgumentOutOfRangeException(nameof(stateName), stateName, null);
+
+		public void SetCurrentState(Token stateToken)
+			=> CurrentState = stateToken.IsEmpty() ? State<T>.Empty : _states.FirstOrDefault(o => o.Token == stateToken) ?? throw new ArgumentOutOfRangeException(nameof(stateToken), stateToken, null);
 
 		public void Start(T value, IPrincipal? principal = null)
 		{
@@ -212,11 +219,16 @@ namespace Lexxys.States
 
 		public async Task UpdateAsync(T value)
 		{
-			foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
+			//foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
+			//{
+			//	Log.Trace($"{item.Token.FullName()} OnUpdateAsync");
+			//	await item.OnUpdate.InvokeAsync(value, this, null, null);
+			//}
+			await Task.WhenAll(Charts.Where(o => !o.OnUpdate.IsEmpty).Select(o =>
 			{
-				Log.Trace($"{item.Token.FullName()} OnUpdateAsync");
-				await item.OnUpdate.InvokeAsync(value, this, null, null);
-			}
+				Log.Trace($"{o.Token.FullName()} OnUpdateAsync");
+				return o.OnUpdate.InvokeAsync(value, o, null, null);
+			}));
 		}
 
 		public bool OnEvent(TransitionEvent<T> @event, T value, IPrincipal? principal = null)
@@ -233,6 +245,9 @@ namespace Lexxys.States
 				throw new ArgumentOutOfRangeException(nameof(@event), @event, "Event.Transition.Source is not equal to the current state.");
 			if (!_transitions.TryGetValue(CurrentState, out var transitions) || !transitions.Contains(@event.Transition))
 				throw new ArgumentOutOfRangeException(nameof(@event), @event, "Specified Event.Transition is not in the list of availabe transitions.");
+
+			if (!@event.Transition.CanMoveAlong(value, this, principal))
+				return false;
 
 			Continue(@event.Transition, value, principal);
 			return true;
@@ -258,24 +273,26 @@ namespace Lexxys.States
 		}
 
 		public IEnumerable<TransitionEvent<T>> GetActiveEvents(T value, IPrincipal? principal = null)
-			=> GetCurrentTree()
+			=> GetActjveStates()
 				.SelectMany(o => o.Chart.GetStateTransitions(o.State)
 					.Where(t => t.CanMoveAlong(value, this, principal))
 					.Select(t => new TransitionEvent<T>(o.Chart, t)));
 
-		public async IAsyncEnumerable<TransitionEvent<T>> GetActiveEventsAsync(T value, IPrincipal? principal = null)
+		public async IAsyncEnumerable<TransitionEvent<T>> GetActiveEventsAsync(T value, IPrincipal? principal = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
 		{
-			foreach (var item in GetCurrentTree())
+			foreach (var item in GetActjveStates())
 			{
 				foreach (var transition in item.Chart.GetStateTransitions(item.State))
 				{
+					if (cancellation.IsCancellationRequested)
+						yield break;
 					if (await transition.CanMoveAlongAsync(value, this, principal))
 						yield return new TransitionEvent<T>(item.Chart, transition);
 				}
 			}
 		}
 
-		public StateTree GetCurrentTree() => CollectTree(new StateTree(), null);
+		public StateTree GetActjveStates() => CollectTree(new StateTree(), null);
 
 		public override string ToString()
 		{
@@ -320,26 +337,27 @@ namespace Lexxys.States
 		{
 			if (CurrentState.Charts.Any(o => !o.IsFinished))
 				return false;
-			var transition = FindActiveTransition(null, value, principal);
+			var transition = FindActiveTransition(value, principal);
 			if (transition == null)
 				return false;
 			Continue(transition, value, principal);
 			return true;
 		}
 
-		private Transition<T>? FindActiveTransition(Token? @event, T context, IPrincipal? principal)
+		private Transition<T>? FindActiveTransition(T context, IPrincipal? principal)
 		{
 			if (!_transitions.TryGetValue(CurrentState, out var all))
 				return null;
+			if (!CurrentState.IsFinished)
+				return null;
 
 			Transition<T>? transition = null;
-			var evt = @event ?? Token.Empty;
-			foreach (var item in all.Where(o => o.Event == evt && o.CanMoveAlong(context, this, principal)))
+			foreach (var item in all.Where(o => o.Event.IsEmpty() && o.CanMoveAlong(context, this, principal)))
 			{
 				if (transition == null)
 					transition = item;
 				else
-					throw new InvalidOperationException($"More than one transitions found for state {Name} and event {@event}.");
+					throw new InvalidOperationException($"Multiple transitions found for state {Name}.");
 			}
 			return transition;
 		}
@@ -419,7 +437,7 @@ namespace Lexxys.States
 			State<T> initial = CurrentState;
 			int limit = _states.Count * 2;
 			Transition<T>? temp;
-			while ((temp = FindActiveTransition(null, value, principal)) != default)
+			while ((temp = FindActiveTransition(value, principal)) != default)
 			{
 				transition = temp;
 				if (--limit < 0)

@@ -1,0 +1,72 @@
+statecharts
+  %statechart                         name
+  #   :id
+  #   :name
+  #   :description
+  #   :onLoad
+  #   :onUpdate
+  #   :chartStart
+  #   :chartFinish
+  #   :stateEnter
+  #   :stateEntered
+  #   :statePassthrough
+  #   :stateExit
+  #   :initialState
+  #   *state
+  %statechart(**)/state               name
+  #   :id
+  #   :name
+  #   :description
+  #   :guard
+  #   :stateEnter
+  #   :stateEntered
+  #   :statePassthrough
+  #   :stateExit
+  #   :role
+  #   *statechart
+  #   *transition
+  %statechart(**)/state/statechart    name
+  %statechart(**)/state/transition    name destination
+  #   :id
+  #   :name
+  #   :description
+  #   :source
+  #   :destination
+  #   :guard
+  #   :action
+  #   :continues   (yes/no)
+  #   :role
+
+  statechart sample-1
+    :initialState Ready
+
+    - Ready
+      - Begin => Uploading
+      - Abort => Aborted
+
+    - Aborted
+
+    - Uploading
+      - Hold => OnHold
+      - Reupload => Uploading
+      -  => Completed
+
+      statechart Doc1
+        - Waiting
+          - Upload => Uploaded
+        - Uploaded
+          - Verify => Verified
+        - Verified
+      statechart Doc2
+        - Waiting
+          - Upload => Uploaded
+        - Uploaded
+          - Verify => Verified
+        - Verified
+
+    - OnHold
+      - Restart => Ready
+      - Resume => Uploading
+        :continues true
+
+    - Completed

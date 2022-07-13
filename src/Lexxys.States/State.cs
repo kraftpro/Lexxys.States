@@ -39,6 +39,7 @@ namespace Lexxys.States
 		public string Name => Token.Name;
 		public string? Description => Token.Description;
 		public bool IsEmpty => this == Empty;
+		public bool IsFinished => Charts.Count == 0 || Charts.All(o => o.IsFinished);
 
 		public StateActionChain<T> StateEnter;
 		public StateActionChain<T> StatePassthrough;
@@ -101,7 +102,8 @@ namespace Lexxys.States
 			StateEntered.Invoke(value, statechart, this, transition);
 			foreach (var chart in Charts)
 			{
-				chart.Start(value, principal);
+				if (!transition.Continues || !chart.IsStarted)
+					chart.Start(value, principal);
 			}
 		}
 

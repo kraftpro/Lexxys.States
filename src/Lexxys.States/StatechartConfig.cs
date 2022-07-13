@@ -52,39 +52,37 @@ namespace Lexxys.States
 			StateConfig.ValidateTokens(States);
 		}
 
-		public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>>? action = null, Func<string, IStateCondition<T>>? condition = null)
+		public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>>? actionBuilder = null, Func<string, IStateCondition<T>>? conditionBuilder = null)
 		{
-			if (String.IsNullOrEmpty(Name))
-				throw new ArgumentNullException(nameof(scope));
 			if (scope == null)
 				scope = TokenScope.Create("statechart");
-			if (action == null)
-				action = StateAction.CSharpScript<T>;
-			if (condition == null)
-				condition = StateCondition.CSharpScript<T>;
+			if (actionBuilder == null)
+				actionBuilder = StateAction.CSharpScript<T>;
+			if (conditionBuilder == null)
+				conditionBuilder = StateCondition.CSharpScript<T>;
 			var token = CreateToken(scope, Id, Name, Description);
 			scope = scope.WithDomain(token);
 
-			var states = States.Select(o => o.Create<T>(scope, action, condition)).ToList();
-			var transitions = WithInitial().Select(o => o.Create<T>(scope, states, action, condition));
+			var states = States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder)).ToList();
+			var transitions = WithInitial().Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
 			var chart = new Statechart<T>(token, states, transitions);
 
 			if (!String.IsNullOrEmpty(OnLoad))
-				chart.OnLoad += action(OnLoad!);
+				chart.OnLoad += actionBuilder(OnLoad!);
 			if (!String.IsNullOrEmpty(OnUpdate))
-				chart.OnUpdate += action(OnUpdate!);
+				chart.OnUpdate += actionBuilder(OnUpdate!);
 			if (!String.IsNullOrEmpty(ChartStart))
-				chart.ChartStart += action(ChartStart!);
+				chart.ChartStart += actionBuilder(ChartStart!);
 			if (!String.IsNullOrEmpty(ChartFinish))
-				chart.ChartFinish += action(ChartFinish!);
+				chart.ChartFinish += actionBuilder(ChartFinish!);
 			if (!String.IsNullOrEmpty(StateEnter))
-				chart.StateEnter += action(StateEnter!);
+				chart.StateEnter += actionBuilder(StateEnter!);
 			if (!String.IsNullOrEmpty(StateEntered))
-				chart.StateEntered += action(StateEntered!);
+				chart.StateEntered += actionBuilder(StateEntered!);
 			if (!String.IsNullOrEmpty(StatePassthrough))
-				chart.StatePassthrough += action(StatePassthrough!);
+				chart.StatePassthrough += actionBuilder(StatePassthrough!);
 			if (!String.IsNullOrEmpty(StateExit))
-				chart.StateExit += action(StateExit!);
+				chart.StateExit += actionBuilder(StateExit!);
 			return chart;
 
 			static Token CreateToken(ITokenScope scope, int? id, string name, string? description)

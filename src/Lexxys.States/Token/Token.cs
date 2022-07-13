@@ -78,7 +78,10 @@ namespace Lexxys
 				return "(empty)";
 			var text = new StringBuilder();
 			if (Id != 0)
-				text.Append(Id).Append('.');
+				if (Id > MinDynamicIndex)
+					text.Append('~').Append(Id - MinDynamicIndex).Append('.');
+				else
+					text.Append(Id).Append('.');
 			text.Append(Name);
 			if (Description != null)
 				text.Append(" - ").Append(Description);

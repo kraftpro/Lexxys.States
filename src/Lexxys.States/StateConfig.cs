@@ -34,30 +34,30 @@ namespace Lexxys.States
 			Charts = charts;
 		}
 
-		public State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>> action, Func<string, IStateCondition<T>> condition)
+		public State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>> actionBuilder, Func<string, IStateCondition<T>> conditionBuilder)
 		{
 			if (scope == null)
 				throw new ArgumentNullException(nameof(scope));
-			if (action == null)
-				throw new ArgumentNullException(nameof(action));
-			if (condition == null)
-				throw new ArgumentNullException(nameof(condition));
+			if (actionBuilder == null)
+				throw new ArgumentNullException(nameof(actionBuilder));
+			if (conditionBuilder == null)
+				throw new ArgumentNullException(nameof(conditionBuilder));
 
 			var token = CreateToken(scope, Id, Name, Description);
 			var state = new State<T>(
 				token: token,
-				guard: String.IsNullOrEmpty(Guard) ? null: condition(Guard!),
+				guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
 				roles: Roles,
-				charts: Charts?.Select(o => o.Create<T>(scope.WithDomain(token), action, condition)).ToList());
+				charts: Charts?.Select(o => o.Create<T>(scope.WithDomain(token), actionBuilder, conditionBuilder)).ToList());
 
 			if (!String.IsNullOrEmpty(StateEnter))
-				state.StateEnter += action(StateEnter!);
+				state.StateEnter += actionBuilder(StateEnter!);
 			if (!String.IsNullOrEmpty(StatePassthrough))
-				state.StatePassthrough += action(StatePassthrough!);
+				state.StatePassthrough += actionBuilder(StatePassthrough!);
 			if (!String.IsNullOrEmpty(StateEntered))
-				state.StateEntered += action(StateEntered!);
+				state.StateEntered += actionBuilder(StateEntered!);
 			if (!String.IsNullOrEmpty(StateExit))
-				state.StateExit += action(StateExit!);
+				state.StateExit += actionBuilder(StateExit!);
 			return state;
 		}
 
