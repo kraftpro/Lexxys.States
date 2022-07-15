@@ -1,5 +1,5 @@
 statecharts
-  %statechart                         name
+  %statechart                         name id
   #   :id
   #   :name
   #   :description
@@ -13,7 +13,7 @@ statecharts
   #   :stateExit
   #   :initialState
   #   *state
-  %statechart(**)/state               name
+  %statechart(**)/state               name id
   #   :id
   #   :name
   #   :description
@@ -25,7 +25,7 @@ statecharts
   #   :role
   #   *statechart
   #   *transition
-  %statechart(**)/state/statechart    name
+  %statechart(**)/state/statechart    name id
   %statechart(**)/state/transition    name destination
   #   :id
   #   :name
@@ -37,36 +37,36 @@ statecharts
   #   :continues   (yes/no)
   #   :role
 
-  statechart sample-1
+  statechart sample-1 1
     :initialState Ready
 
-    - Ready
+    - Ready 1
       - Begin => Uploading
       - Abort => Aborted
 
-    - Aborted
+    - Aborted 2
 
-    - Uploading
+    - Uploading 3
       - Hold => OnHold
       - Reupload => Uploading
       -  => Completed
 
-      statechart Doc1
-        - Waiting
+      statechart Doc1 1
+        - Waiting 1
           - Upload => Uploaded
-        - Uploaded
+        - Uploaded 2
           - Verify => Verified
-        - Verified
-      statechart Doc2
-        - Waiting
+        - Verified 33
+      statechart Doc2 2
+        - Waiting 11
           - Upload => Uploaded
-        - Uploaded
+        - Uploaded 12
           - Verify => Verified
-        - Verified
+        - Verified 33
 
-    - OnHold
+    - OnHold 4
       - Restart => Ready
       - Resume => Uploading
         :continues true
 
-    - Completed
+    - Completed 99

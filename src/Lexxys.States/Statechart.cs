@@ -113,12 +113,21 @@ namespace Lexxys.States
 
 		#endregion
 
+		/// <summary>
+		/// Returns all the statecharts, including this one.
+		/// </summary>
 		public IReadOnlyList<Statechart<T>> Charts => __charts ??= CollectCharts();
 		private IReadOnlyList<Statechart<T>>? __charts;
 
+		/// <summary>
+		/// Returns statechart by it's name. Throws <see cref="ArgumentException"/> for duplicate names.
+		/// </summary>
 		public IReadOnlyDictionary<string, Statechart<T>> ChartsByName => __chartsByName ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Name))!;
 		private IReadOnlyDictionary<string, Statechart<T>>? __chartsByName;
 
+		/// <summary>
+		/// Returns statechart by it's ID. Throws <see cref="ArgumentException"/> for duplicate IDs.
+		/// </summary>
 		public IReadOnlyDictionary<int, Statechart<T>> ChartsById
 			=> __chartsById ??= ReadOnly.Wrap(Charts.ToDictionary(o => o.Id))!;
 		private IReadOnlyDictionary<int, Statechart<T>>? __chartsById;
@@ -190,6 +199,10 @@ namespace Lexxys.States
 			}
 		}
 
+		/// <summary>
+		/// Invokes <see cref="OnLoad"/> for this state chart and all the sub-charts.
+		/// </summary>
+		/// <param name="value">Object the statechart corresponds to.</param>
 		public void Load(T value)
 		{
 			foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
@@ -199,13 +212,22 @@ namespace Lexxys.States
 			}
 		}
 
+		/// <summary>
+		/// Asynchroniously invokes <see cref="OnLoad"/> for this state chart and all the sub-charts.
+		/// </summary>
+		/// <param name="value">Object the statechart corresponds to.</param>
 		public async Task LoadAsync(T value)
 		{
-			foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
+			//foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
+			//{
+			//	Log.Trace($"{item.Token.FullName()} OnLoadAsync");
+			//	await item.OnLoad.InvokeAsync(value, item, null, null);
+			//}
+			await Task.WhenAll(Charts.Where(o => !o.OnLoad.IsEmpty).Select(o =>
 			{
-				Log.Trace($"{item.Token.FullName()} OnLoadAsync");
-				await item.OnLoad.InvokeAsync(value, this, null, null);
-			}
+				Log.Trace($"{o.Token.FullName()} OnLoadAsync");
+				return o.OnLoad.InvokeAsync(value, o, null, null);
+			}));
 		}
 
 		public void Update(T value)
@@ -231,6 +253,15 @@ namespace Lexxys.States
 			}));
 		}
 
+		/// <summary>
+		/// Execute the transition event <see cref="TransitionEvent{T}"/>.  Returns <see cref="true"/> if the state was chaged.
+		/// </summary>
+		/// <param name="event">The transition event</param>
+		/// <param name="value">Entity object</param>
+		/// <param name="principal">Permissions</param>
+		/// <returns>True if the state was changes</returns>
+		/// <exception cref="ArgumentNullException"></exception>
+		/// <exception cref="ArgumentOutOfRangeException"></exception>
 		public bool OnEvent(TransitionEvent<T> @event, T value, IPrincipal? principal = null)
 		{
 			if (@event == null)
@@ -275,7 +306,7 @@ namespace Lexxys.States
 		public IEnumerable<TransitionEvent<T>> GetActiveEvents(T value, IPrincipal? principal = null)
 			=> GetActjveStates()
 				.SelectMany(o => o.Chart.GetStateTransitions(o.State)
-					.Where(t => t.CanMoveAlong(value, this, principal))
+					.Where(t => (o.State.IsFinished || !t.Event.IsEmpty()) && t.CanMoveAlong(value, this, principal))
 					.Select(t => new TransitionEvent<T>(o.Chart, t)));
 
 		public async IAsyncEnumerable<TransitionEvent<T>> GetActiveEventsAsync(T value, IPrincipal? principal = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
@@ -286,7 +317,7 @@ namespace Lexxys.States
 				{
 					if (cancellation.IsCancellationRequested)
 						yield break;
-					if (await transition.CanMoveAlongAsync(value, this, principal))
+					if ((item.State.IsFinished || !transition.Event.IsEmpty()) && await transition.CanMoveAlongAsync(value, this, principal))
 						yield return new TransitionEvent<T>(item.Chart, transition);
 				}
 			}
@@ -326,25 +357,16 @@ namespace Lexxys.States
 			{
 				if (item.OnEvent(@event, value, principal))
 				{
-					TestSubchartsFinished(value, principal);
+					var transition = FindAutoTransition(value, principal);
+					if (transition != null)
+						Continue(transition, value, principal);
 					return true;
 				}
 			}
 			return false;
 		}
 
-		private bool TestSubchartsFinished(T value, IPrincipal? principal)
-		{
-			if (CurrentState.Charts.Any(o => !o.IsFinished))
-				return false;
-			var transition = FindActiveTransition(value, principal);
-			if (transition == null)
-				return false;
-			Continue(transition, value, principal);
-			return true;
-		}
-
-		private Transition<T>? FindActiveTransition(T context, IPrincipal? principal)
+		private Transition<T>? FindAutoTransition(T context, IPrincipal? principal)
 		{
 			if (!_transitions.TryGetValue(CurrentState, out var all))
 				return null;
@@ -368,20 +390,8 @@ namespace Lexxys.States
 			var transition2 = Idle(transition, value, principal);
 			CurrentState.OnStateEntered(value, this, transition2, principal);
 			OnStateEntered(value, CurrentState, transition2);
-			if (!ContinueSubcharts(value, principal, transition2.Continues) && IsInFinalState())
+			if (CurrentState.IsFinished && IsInFinalState())
 				OnFinish(value);
-		}
-
-		private bool ContinueSubcharts(T value, IPrincipal? principal, bool continues)
-		{
-			if (CurrentState.Charts.Count == 0)
-				return false;
-			foreach (var item in CurrentState.Charts)
-			{
-				if (!continues || !item.IsStarted)
-					item.Start(value);
-			}
-			return TestSubchartsFinished(value, principal);
 		}
 
 		private void OnStateExit(T context, State<T> state, Transition<T> transition)
@@ -437,7 +447,7 @@ namespace Lexxys.States
 			State<T> initial = CurrentState;
 			int limit = _states.Count * 2;
 			Transition<T>? temp;
-			while ((temp = FindActiveTransition(value, principal)) != default)
+			while ((temp = FindAutoTransition(value, principal)) != default)
 			{
 				transition = temp;
 				if (--limit < 0)
@@ -472,39 +482,29 @@ namespace Lexxys.States
 			{
 				if (await item.OnEventAsync(@event, value, principal))
 				{
-					await TestSubchartsFinishedAsync(value, principal);
+					var transition = await FindAutoTransitionAsync(value, principal);
+					if (transition != null)
+						await ContinueAsync(transition, value, principal);
 					return true;
 				}
 			}
 			return false;
 		}
 
-		private async Task<bool> TestSubchartsFinishedAsync(T value, IPrincipal? principal)
-		{
-			if (CurrentState.Charts.Any(o => !o.IsFinished))
-				return false;
-			var transition = await FindActiveTransitionAsync(null, value, principal);
-			if (transition == null)
-				return false;
-			await ContinueAsync(transition, value, principal);
-			return true;
-		}
-
-		private async Task<Transition<T>?> FindActiveTransitionAsync(Token? @event, T context, IPrincipal? principal)
+		private async Task<Transition<T>?> FindAutoTransitionAsync(T context, IPrincipal? principal)
 		{
 			if (!_transitions.TryGetValue(CurrentState, out var all))
 				return null;
 	
 			Transition<T>? transition = null;
-			var evt = @event ?? Token.Empty;
 			foreach (var item in all)
 			{
-				if (item.Event == evt && await item.CanMoveAlongAsync(context, this, principal))
+				if (item.Event.IsEmpty() && await item.CanMoveAlongAsync(context, this, principal))
 				{
 					if (transition == null)
 						transition = item;
 					else
-						throw new InvalidOperationException($"More than one transitions found for state {Name} and event {@event}.");
+						throw new InvalidOperationException($"More than one transitions found for state {Name}.");
 				}
 			}
 			return transition;
@@ -516,20 +516,8 @@ namespace Lexxys.States
 			var transition2 = await IdleAsync(transition, value, principal);
 			await CurrentState.OnStateEnteredAsync(value, this, transition2, principal);
 			await OnStateEnteredAsync(value, CurrentState, transition2);
-			if (!await ContinueSubchartsAsync(value, principal, transition2.Continues) && IsInFinalState())
+			if (!CurrentState.IsFinished && IsInFinalState())
 				await OnFinishAsync(value);
-		}
-
-		private async Task<bool> ContinueSubchartsAsync(T value, IPrincipal? principal, bool continues)
-		{
-			if (CurrentState.Charts.Count == 0)
-				return false;
-			foreach (var item in CurrentState.Charts)
-			{
-				if (!continues || !item.IsStarted)
-					await item.StartAsync(value);
-			}
-			return await TestSubchartsFinishedAsync(value, principal);
 		}
 
 		private async Task OnStateExitAsync(T context, State<T> state, Transition<T> transition)
@@ -585,7 +573,7 @@ namespace Lexxys.States
 			State<T> initial = CurrentState;
 			int limit = _states.Count * 2;
 			Transition<T>? temp;
-			while ((temp = await FindActiveTransitionAsync(null, value, principal)) != default)
+			while ((temp = await FindAutoTransitionAsync(value, principal)) != default)
 			{
 				transition = temp;
 				if (--limit < 0)

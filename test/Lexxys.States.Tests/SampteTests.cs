@@ -265,29 +265,26 @@ namespace Lexxys.States.Tests
 
 		public class SampleObj
 		{
-			public string? State { get; set; }
-			public string?[] DocsState { get; set; } = new string[2];
+			public string?[] State { get; set; } = new string[3];
+			private static string[] Names = new[] { "sample-1", "Doc1", "Doc2" };
 
 			public void SetStates(IEnumerable<(string Name, string? Value)> states)
 			{
 				foreach (var state in states)
 				{
-					if (state.Name == "sample-1")
-						State = state.Value;
-					else if (state.Name == "Doc1")
-						DocsState[0] = state.Value;
-					else if (state.Name == "Doc2")
-						DocsState[1] = state.Value;
-					else
+					var i = Names.FindIndex(o => o == state.Name);
+					if (i < 0)
 						throw new ArgumentException($"Name not found '{state.Name}'");
+					State[i] = state.Value;
 				}
 			}
 
 			public (string Name, string? Value)[] GetStates()
 			{
-				return new[] { ("sample-1", State), ("Doc1", DocsState[0]), ("Doc2", DocsState[1]) };
+				return new[] { (Names[0], State[0]), (Names[1], State[1]), (Names[2], State[2]) };
 			}
 
+			public override string ToString() => String.Join(":", State);
 		}
 	}
 }

@@ -72,7 +72,9 @@ namespace Lexxys
 		/// <returns></returns>
 		public string FullName() => String.Join(".", GetPath().Select(o => o.Name));
 
-		public override string ToString()
+		public override string ToString() => ToString(true);
+
+		public string ToString(bool includeDescription)
 		{
 			if (Object.ReferenceEquals(this, Empty))
 				return "(empty)";
@@ -83,7 +85,7 @@ namespace Lexxys
 				else
 					text.Append(Id).Append('.');
 			text.Append(Name);
-			if (Description != null)
+			if (includeDescription && Description != null)
 				text.Append(" - ").Append(Description);
 			return text.ToString();
 		}
