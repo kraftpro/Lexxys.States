@@ -32,7 +32,7 @@ statecharts
   #   :description
   #   :source
   #   :destination
-  #   :guard
+  #   :guard        parameters (o, c, s, t) -> (object, chart, state, transition)
   #   :action
   #   :continues   (yes/no)
   #   :role
@@ -50,19 +50,21 @@ statecharts
       - Hold => OnHold
       - Reupload => Uploading
       -  => Completed
-
+        :guard state.IsFinished
       statechart Doc1 1
-        - Waiting 1
-          - Upload => Uploaded
-        - Uploaded 2
-          - Verify => Verified
-        - Verified 33
-      statechart Doc2 2
         - Waiting 11
           - Upload => Uploaded
         - Uploaded 12
           - Verify => Verified
         - Verified 33
+      statechart Doc2 2
+        - Waiting 1
+          - Upload => Uploaded
+        - Uploaded 2
+          - Verify => Verified
+        - Verified 33
+#     statechart Doc3 3
+#       reference .document-upload
 
     - OnHold 4
       - Restart => Ready
@@ -70,3 +72,10 @@ statecharts
         :continues true
 
     - Completed 99
+
+  statechart .document-upload
+    - Waiting 1
+      - Upload => Uploaded
+    - Uploaded 2
+      - Verify => Verified
+    - Verified 33

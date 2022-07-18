@@ -8,7 +8,26 @@ namespace Lexxys.States.Tests.Sample
 {
 	static class Runner
 	{
+		const int LOAD = 55;
+		const int UPDATE = 66;
+
 		public static void Go(string[] args)
+		{
+			var chart = Initialize(args);
+			if (chart == null)
+				return;
+			Run(new Entity(chart.Charts.Count), chart);
+		}
+
+		public static async Task GoAsync(string[] args)
+		{
+			var chart = Initialize(args);
+			if (chart == null)
+				return;
+			await RunAsync(new Entity(chart.Charts.Count), chart);
+		}
+
+		private static Statechart<Entity>? Initialize(string[] args)
 		{
 			StaticServices.AddFactory(ConsoleLoggerFactory.Instance);
 			StaticServices.ConfigService().AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
@@ -18,17 +37,36 @@ namespace Lexxys.States.Tests.Sample
 			if (chart == null)
 			{
 				Console.WriteLine("Cannot create a statechart");
-				return;
+				return null;
 			}
-			var obj = new Entity(chart.Charts.Count);
-			chart.OnUpdate += (o, c) => o.SetStates(c.Charts.Select(s => s.CurrentState?.Id).ToList());
-			chart.OnLoad += (o, c) => {
-				foreach (var x in c.Charts.Zip(o.State, (Chart, State) => (Chart, State)))
-				{
-					x.Chart.SetCurrentState(x.State);
-				}
-			};
-			Run(obj, chart);
+			chart.OnUpdate += StateAction.Create<Entity>(
+				(o, c, s, t) => {
+					Console.WriteLine("Running Update");
+					o.SetStates(c.Charts.Select(s => s.CurrentState?.Id).ToList());
+				},
+				(o, c, s, t) => {
+					Console.WriteLine("Running UpdateAsync");
+					o.SetStates(c.Charts.Select(s => s.CurrentState?.Id).ToList()); return Task.CompletedTask;
+				});
+			chart.OnLoad += StateAction.Create<Entity>(
+				(o, c, s, t) => {
+					Console.WriteLine("Running Load");
+					foreach (var x in c.Charts.Zip(o.State, (Chart, State) => (Chart, State)))
+					{
+						x.Chart.SetCurrentState(x.State);
+					}
+				},
+				(o, c, s, t) => {
+					Console.WriteLine("Running LoadAsync");
+					foreach (var x in c.Charts.Zip(o.State, (Chart, State) => (Chart, State)))
+					{
+						x.Chart.SetCurrentState(x.State);
+					}
+					return Task.CompletedTask;
+				});
+
+			// chart.CurrentState
+			return chart;
 		}
 
 		static string GetChartName(string[] args)
@@ -43,7 +81,7 @@ namespace Lexxys.States.Tests.Sample
 				{
 					Console.Write(i + 1);
 					Console.Write(". ");
-					Console.Write(items[i]);
+					Console.WriteLine(items[i]);
 				}
 				Console.Write("> ");
 				var s = Console.ReadLine();
@@ -54,22 +92,21 @@ namespace Lexxys.States.Tests.Sample
 
 		static void Run<T>(T obj, Statechart<T> chart)
 		{
-			const int LOAD = 91;
-			const int UPDATE = 92;
-
 			chart.Load(obj);
 			if (!chart.IsStarted)
 				chart.Start(obj);
 			for (;;)
 			{
-				var events = chart.GetActiveEvents(obj).ToList();
-				for (int i = 0; i < events.Count; ++i)
+				List<TransitionEvent<T>> events = new List<TransitionEvent<T>>();
+				foreach (var item in chart.GetActiveEvents(obj))
 				{
-					Console.WriteLine($"{i + 1}. {events[i].Transition.Event.Name} at {events[i].Chart.Token.ToString(false)}:{events[i].Transition.Source.Token.ToString(false)}");
+					events.Add(item);
+					Console.WriteLine($"{events.Count}. {item.Transition.Event.Name} at {item.Chart.Token.ToString(false)}:{item.Transition.Source.Token.ToString(false)}");
 				}
 				Console.WriteLine($"{LOAD}. Load");
 				Console.WriteLine($"{UPDATE}. Update");
 				var s = Console.ReadLine();
+
 				if (!(int.TryParse(s, out var j) && j >= 1 && (j <= events.Count || j == LOAD || j == UPDATE)))
 				{
 					if (String.IsNullOrWhiteSpace(s))
@@ -89,6 +126,47 @@ namespace Lexxys.States.Tests.Sample
 				else
 				{
 					chart.OnEvent(events[j - 1], obj);
+				}
+			}
+		}
+
+		static async Task RunAsync<T>(T obj, Statechart<T> chart)
+		{
+
+			await chart.LoadAsync(obj);
+			if (!chart.IsStarted)
+				await chart.StartAsync(obj);
+			for (; ; )
+			{
+				List<TransitionEvent<T>> events = new List<TransitionEvent<T>>();
+				await foreach (var item in chart.GetActiveEventsAsync(obj))
+				{
+					events.Add(item);
+					Console.WriteLine($"{events.Count}. {item.Transition.Event.Name} at {item.Chart.Token.ToString(false)}:{item.Transition.Source.Token.ToString(false)}");
+				}
+				Console.WriteLine($"{LOAD}. Load");
+				Console.WriteLine($"{UPDATE}. Update");
+				var s = Console.ReadLine();
+
+				if (!(int.TryParse(s, out var j) && j >= 1 && (j <= events.Count || j == LOAD || j == UPDATE)))
+				{
+					if (String.IsNullOrWhiteSpace(s))
+						return;
+					continue;
+				}
+				if (j == LOAD)
+				{
+					await chart.LoadAsync(obj);
+					if (!chart.IsStarted)
+						await chart.StartAsync(obj);
+				}
+				else if (j == UPDATE)
+				{
+					await chart.UpdateAsync(obj);
+				}
+				else
+				{
+					await chart.OnEventAsync(events[j - 1], obj);
 				}
 			}
 		}

@@ -66,7 +66,7 @@ namespace Lexxys.States.Tests
 			var t1 = new Transition<T>(s1, s2, t.Token("Inside"));
 			var t2 = new Transition<T>(s1, s3, t.Token("Over"));
 			var t3 = new Transition<T>(s2, s3, t.Token("Done"));
-			var t4 = new Transition<T>(s2, s3, guard: State<T>.AllFinishedCondition); // auto transition when the subchart is done
+			var t4 = new Transition<T>(s2, s3, guard: StateCondition.Create<T>((o, c, s, t) => s!.Charts.All(x => x.IsFinished))); // auto transition when the subchart is done
 
 			var result = new Statechart<T>(token, new[] {s1, s2, s3 }, new[] { t0, t1, t2, t3, t4 });
 			return result;
@@ -86,7 +86,7 @@ namespace Lexxys.States.Tests
 			var t0 = new Transition<T>(State<T>.Empty, s1);
 			var t1 = new Transition<T>(s1, s2, t.Token("Hold"));
 			var t2 = new Transition<T>(s2, s1, t.Token("Resume"));
-			var t3 = new Transition<T>(s1, s3, guard: State<T>.AllFinishedCondition);
+			var t3 = new Transition<T>(s1, s3, guard: StateCondition.Create<T>((o, c, s, t) => s!.Charts.All(x => x.IsFinished)));
 
 			var result = new Statechart<T>(token, new[] { s1, s2, s3 }, new[] { t0, t1, t2, t3 });
 			return result;

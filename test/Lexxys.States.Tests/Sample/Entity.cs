@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Lexxys.States.Tests.Sample;
 
-class Entity
+public class Entity
 {
 	public int?[] State { get; }
 

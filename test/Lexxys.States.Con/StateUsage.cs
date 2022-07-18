@@ -36,11 +36,11 @@ namespace Lexxys.States.Con
 				}
 				else
 				{
-					machine.ChartsByName["main"].SetCurrentState(value.Step1);
-					machine.ChartsByName["subchart"].SetCurrentState(value.Step2);
+					machine.Charts.First(o => o.Name == "main").SetCurrentState(value.Step1);
+					machine.Charts.First(o => o.Name == "subchart").SetCurrentState(value.Step2);
 				}
 
-				System.Console.WriteLine($": {String.Join(", ", machine.GetActjveStates().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
+				System.Console.WriteLine($": {String.Join(", ", machine.GetActiveStates().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
 				var actions = machine.GetActiveEvents(value, user).ToList();
 				if (actions.Count == 0)
 				{
@@ -66,8 +66,8 @@ namespace Lexxys.States.Con
 				}
 				else
 				{
-					value.SetStep1((machine.ChartsByName["main"]?.CurrentState?.Id) ?? 0);
-					value.SetStep2(machine.ChartsByName["subchart"]?.CurrentState?.Id);
+					value.SetStep1((machine.Charts.First(o => o.Name == "main").CurrentState?.Id) ?? 0);
+					value.SetStep2(machine.Charts.First(o => o.Name == "subchart").CurrentState?.Id);
 				}
 			}
 		}
@@ -82,9 +82,9 @@ namespace Lexxys.States.Con
 					{
 						st.OnLoad += (e, o) =>
 						{
-							o.ChartsByName["main"].SetCurrentState(e.Step1);
+							o.Charts.First(o => o.Name == "main").SetCurrentState(e.Step1);
 							if (e.Step2 != null)
-								o.ChartsByName["subchart"].SetCurrentState(e.Step2);
+								o.Charts.First(o => o.Name == "subchart").SetCurrentState(e.Step2);
 						};
 						st.OnUpdate += (e, o) =>
 						{
@@ -106,7 +106,7 @@ namespace Lexxys.States.Con
 				case "list":
 					// Load/Update states of the statecharts by list of statesc;
 					{
-						st.OnLoad += (e, o) => Array.ForEach(e.GetState(), s => o.ChartsById[s.ChartId].SetCurrentState(s.ChartState));
+						st.OnLoad += (e, o) => Array.ForEach(e.GetState(), s => o.Charts.First(c => c.Id == s.ChartId).SetCurrentState(s.ChartState));
 						st.OnUpdate += (e, o) => e.SetState(o.Charts.Select(c => (c.Id, c.CurrentState.Id)));
 					}
 					break;
@@ -114,8 +114,8 @@ namespace Lexxys.States.Con
 				case "direct":
 					// Load/Update states of the statecharts directly;
 					{
-						var st1 = st.ChartsByName["main"];
-						var st2 = st.ChartsByName["subchart"];
+						var st1 = st.Charts.First(o => o.Name == "main");
+						var st2 = st.Charts.First(o => o.Name == "subchart");
 
 						st1.OnLoad += (e, o) => o.SetCurrentState(e.Step1);
 						st2.OnLoad += (e, o) => o.SetCurrentState(e.Step2);

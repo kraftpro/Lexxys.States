@@ -20,13 +20,12 @@ namespace Lexxys.States.Tests
 		{
 			StaticServices.AddLoggingStab();
 			StaticServices.ConfigService().AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
-			var root = Config.Current.GetValue<XmlLiteNode>("statecharts").Value;
-			Assert.IsNotNull(root);
-			var element = root.Element(o => o["name"] == "sample-1");
-			Assert.IsFalse(element.IsEmpty);
-			var config = StatechartConfig.FromXml(element);
-			Assert.IsNotNull(config);
-			ChartConfig = config;
+
+			var configs = Config.Current.GetCollection<StatechartConfig>("statecharts.statechart").Value;
+			Assert.IsTrue(configs.Count > 0);
+			var sample = configs.FirstOrDefault(o => o.Name == "sample-1");
+			Assert.IsNotNull(sample);
+			ChartConfig = sample;
 		}
 
 		Statechart<SampleObj> GetSample() => ChartConfig.Create<SampleObj>(actionBuilder: o => new EchoAction<SampleObj>(o));
@@ -89,7 +88,7 @@ namespace Lexxys.States.Tests
 
 			var events = sample.GetActiveEvents(obj).ToList();
 			Assert.IsNotNull(events);
-			Assert.AreEqual(5, events.Count);
+			Assert.AreEqual(4, events.Count);
 			return (obj, sample);
 		}
 
@@ -115,7 +114,7 @@ namespace Lexxys.States.Tests
 
 			var events = sample.GetActiveEvents(obj).ToList();
 			Assert.IsNotNull(events);
-			Assert.AreEqual(5, events.Count);
+			Assert.AreEqual(4, events.Count);
 		}
 
 		private (SampleObj, Statechart<SampleObj>) Run_CanStartUpload()
@@ -125,7 +124,7 @@ namespace Lexxys.States.Tests
 			Assert.IsNotNull(upload);
 			sample.OnEvent(upload, obj);
 			Assert.AreEqual("Uploading", sample.CurrentState.Name);
-			var doc1 = sample.ChartsByName["Doc1"];
+			var doc1 = sample.Charts.First(o => o.Name == "Doc1");
 			Assert.AreEqual("Uploaded", doc1.CurrentState.Name);
 
 			return (obj, sample);
@@ -165,9 +164,9 @@ namespace Lexxys.States.Tests
 
 			var events = sample.GetActiveEvents(obj).ToList();
 			Assert.IsNotNull(events);
-			Assert.AreEqual(5, events.Count);
+			Assert.AreEqual(4, events.Count);
 
-			var doc1 = sample.ChartsByName["Doc1"];
+			var doc1 = sample.Charts.First(o => o.Name == "Doc1");
 			Assert.AreEqual("Uploaded", doc1.CurrentState.Name);
 		}
 
@@ -194,7 +193,7 @@ namespace Lexxys.States.Tests
 		{
 			var (obj, sample) = Run_CanStartUpload();
 
-			var doc1 = sample.ChartsByName["Doc1"];
+			var doc1 = sample.Charts.First(o => o.Name == "Doc1");
 			Assert.AreEqual("Uploaded", doc1.CurrentState.Name);
 
 			var ee = sample.GetActiveEvents(obj).Where(o => o.Transition.Event.Name == "Verify").ToList();
@@ -211,7 +210,7 @@ namespace Lexxys.States.Tests
 			var (obj, sample) = Run_UploadDoc1();
 			Assert.AreEqual("Uploading", sample.CurrentState.Name);
 			var ee = sample.GetActiveEvents(obj).ToList();
-			Assert.AreEqual(4, ee.Count);
+			Assert.AreEqual(3, ee.Count);
 		}
 
 
@@ -220,7 +219,7 @@ namespace Lexxys.States.Tests
 		{
 			var (obj, sample) = Run_UploadDoc1();
 
-			var doc2 = sample.ChartsByName["Doc2"];
+			var doc2 = sample.Charts.First(o => o.Name == "Doc2");
 			Assert.AreEqual("Waiting", doc2.CurrentState.Name);
 			var e = doc2.GetActiveEvents(obj).FirstOrDefault(o => o.Transition.Event.Name == "Upload");
 			Assert.IsNotNull(e);
@@ -240,7 +239,7 @@ namespace Lexxys.States.Tests
 		public void J_CanSaveAndLoadStatechart()
 		{
 			var (obj, sample) = Run_UploadDoc1();
-			sample.OnLoad += (o, c) => Array.ForEach(o.GetStates(), s => c.ChartsByName[s.Name].SetCurrentState(s.Value));
+			sample.OnLoad += (o, c) => Array.ForEach(o.GetStates(), s => c.Charts.First(x => x.Name == s.Name).SetCurrentState(s.Value));
 			sample.OnUpdate += (o, c) => o.SetStates(c.Charts.Select(s => (s.Name, s.CurrentState?.Name)));
 
 			// Save current state
@@ -248,7 +247,7 @@ namespace Lexxys.States.Tests
 
 			var x = sample.Charts.Select(o => o.CurrentState).ToArray();
 
-			var doc2 = sample.ChartsByName["Doc2"];
+			var doc2 = sample.Charts.First(o => o.Name == "Doc2");
 			var e = doc2.GetActiveEvents(obj).FirstOrDefault(o => o.Transition.Event.Name == "Upload");
 			Assert.IsNotNull(e);
 			sample.OnEvent(e, obj);
@@ -261,6 +260,16 @@ namespace Lexxys.States.Tests
 			var z = sample.Charts.Select(o => o.CurrentState).ToArray();
 
 			CollectionAssert.AreEquivalent(x, z);
+		}
+
+		[TestMethod]
+		public void K_CanGenerateLambdaTest()
+		{
+			var lambda = ChartConfig.GenerateLambda<SampleObj>();
+			Assert.IsNotNull(lambda);
+
+			var statechart = lambda(null);
+			Assert.IsNotNull(statechart);
 		}
 
 		public class SampleObj

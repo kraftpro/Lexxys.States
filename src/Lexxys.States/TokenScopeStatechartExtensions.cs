@@ -1,10 +1,9 @@
 ﻿using System;
 
-namespace Lexxys.States
+namespace Lexxys.States;
+
+public static class TokenScopeStatechartExtensions
 {
-	public static class TokenScopeStatechartExtensions
-	{
-		public static ITokenScope WithTransitionDomain(this ITokenScope scope)
-			=> scope.WithDomain(scope.Token(TransitionConfig.TokenDomain));
-	}
+	public static ITokenScope WithTransitionDomain(this ITokenScope scope)
+		=> scope.WithDomain(scope.Token(TransitionConfig.TokenDomain));
 }

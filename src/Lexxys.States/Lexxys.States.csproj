@@ -4,7 +4,12 @@
     <TargetFrameworks>net6.0;netstandard2.0;net471</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <VersionPrefix>0.9.0</VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+    <!--Build>0$([System.DateTime]::Today.ToString("MMdd"))</Build-->
+    <Build>0</Build>
     <RootNamespace>Lexxys.States</RootNamespace>
+    <AnalysisLevel>6.0-all</AnalysisLevel>
   </PropertyGroup>
 
   <ItemGroup>

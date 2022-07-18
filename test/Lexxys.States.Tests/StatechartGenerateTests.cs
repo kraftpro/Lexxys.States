@@ -29,7 +29,7 @@ namespace Lexxys.States.Tests
 			using (var writer = new StringWriter(text))
 			{
 				writer.WriteLine("\t\t// Generated SipleCodeTest");
-				chart.GenerateCode(writer, "Login", "CreateStatechart", "public", true);
+				chart.GenerateCode(writer, "Login", "CreateStatechart", "public", nullable: true);
 			}
 			var code = text.ToString();
 			Assert.IsTrue(code.Length > 0);
@@ -43,7 +43,7 @@ namespace Lexxys.States.Tests
 			using (var writer = new StringWriter(text))
 			{
 				writer.WriteLine("\t\t// Generated SubchatsCodeTest");
-				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", true);
+				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", nullable: true);
 			}
 			var code = text.ToString();
 			Assert.IsTrue(code.Length > 0);
@@ -64,7 +64,7 @@ namespace Lexxys.States.Tests
 				//writer.WriteLine("{");
 				writer.WriteLine("  public static partial class StateChartFactory");
 				writer.WriteLine("  {");
-				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", true, indent: "    ", tab: "  ");
+				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", indent: "    ", tab: "  ", nullable: true);
 				writer.WriteLine("  }");
 				//writer.WriteLine("}");
 			}
