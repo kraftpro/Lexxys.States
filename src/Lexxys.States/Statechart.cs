@@ -596,7 +596,7 @@ public class Statechart<T>
 		var transition2 = await IdleAsync(transition, value, principal).ConfigureAwait(false);
 		await CurrentState.OnStateEnteredAsync(value, this, transition2, principal).ConfigureAwait(false);
 		await OnStateEnteredAsync(value, CurrentState, transition2).ConfigureAwait(false);
-		if (!CurrentState.IsFinished && IsInFinalState())
+		if (CurrentState.IsFinished && IsInFinalState())
 			await OnFinishAsync(value).ConfigureAwait(false);
 	}
 
@@ -638,19 +638,19 @@ public class Statechart<T>
 
 	private Task OnStartAsync(T context)
 	{
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStartAsync)}");
 		if (ChartStart.IsEmpty)
 			return Task.CompletedTask;
-		if (Log.IsEnabled(LogType.Trace))
-			Log.Trace($"Invoke {nameof(OnStartAsync)} {Token.FullName()}");
 		return ChartStart.InvokeAsync(context, this, null, null);
 	}
 
 	private Task OnFinishAsync(T context)
 	{
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnFinishAsync)}");
 		if (ChartFinish.IsEmpty)
 			return Task.CompletedTask;
-		if (Log.IsEnabled(LogType.Trace))
-			Log.Trace($"Invoke {nameof(OnFinishAsync)} {Token.FullName()}");
 		return ChartFinish.InvokeAsync(context, this, null, null);
 	}
 
