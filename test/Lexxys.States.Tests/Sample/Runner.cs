@@ -105,6 +105,7 @@ namespace Lexxys.States.Tests.Sample
 				}
 				Console.WriteLine($"{LOAD}. Load");
 				Console.WriteLine($"{UPDATE}. Update");
+				Console.Write("> ");
 				var s = Console.ReadLine();
 
 				if (!(int.TryParse(s, out var j) && j >= 1 && (j <= events.Count || j == LOAD || j == UPDATE)))
@@ -146,6 +147,7 @@ namespace Lexxys.States.Tests.Sample
 				}
 				Console.WriteLine($"{LOAD}. Load");
 				Console.WriteLine($"{UPDATE}. Update");
+				Console.Write("> ");
 				var s = Console.ReadLine();
 
 				if (!(int.TryParse(s, out var j) && j >= 1 && (j <= events.Count || j == LOAD || j == UPDATE)))

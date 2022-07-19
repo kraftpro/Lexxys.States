@@ -63,8 +63,8 @@ statecharts
         - Uploaded 2
           - Verify => Verified
         - Verified 33
-#     statechart Doc3 3
-#       reference .document-upload
+      statechart Doc3 3
+        :reference .document-upload
 
     - OnHold 4
       - Restart => Ready

@@ -5,5 +5,5 @@ namespace Lexxys.States;
 public static class TokenScopeStatechartExtensions
 {
 	public static ITokenScope WithTransitionDomain(this ITokenScope scope)
-		=> scope.WithDomain(scope.Token(TransitionConfig.TokenDomain));
+		=> (scope ?? throw new ArgumentNullException(nameof(scope))).WithDomain(scope.Token(TransitionConfig.TokenDomain));
 }

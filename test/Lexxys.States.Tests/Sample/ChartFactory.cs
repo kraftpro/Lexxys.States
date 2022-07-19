@@ -9,7 +9,7 @@ namespace Lexxys.States.Tests.Sample;
 
 internal class ChartFactory
 {
-	private static IValue<IReadOnlyList<StatechartConfig>> Configuration = GetConfig();
+	private static readonly IValue<IReadOnlyList<StatechartConfig>> Configuration = GetConfig();
 
 	static IValue<IReadOnlyList<StatechartConfig>> GetConfig()
 	{
@@ -18,5 +18,5 @@ internal class ChartFactory
 
 	public static IEnumerable<string> ListStatecharts() => Configuration.Value.Select(o => o.Name);
 
-	public static Statechart<T>? GetStatechart<T>(string name) => Configuration.Value.FirstOrDefault(x => x.Name == name)?.Create<T>();
+	public static Statechart<T>? GetStatechart<T>(string name) => Configuration.Value.FirstOrDefault(x => x.Name == name)?.Create<T>(referenceResolver: o => Configuration.Value.First(p => p.Name == o));
 }

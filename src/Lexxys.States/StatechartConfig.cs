@@ -35,8 +35,9 @@ public class StatechartConfig
 	public string? InitialState { get; }
 	public IReadOnlyCollection<StateConfig> States { get; }
 	public IReadOnlyCollection<TransitionConfig> Transitions { get; }
+	public string? Reference { get; }
 
-	public StatechartConfig(int? id, string name, string? description, string? onLoad, string? onUpdate, string? chartStart, string? chartFinish, string? stateEnter, string? stateEntered, string? statePassthrough, string? stateExit, string? initialState, IReadOnlyCollection<StateConfig>? states, IReadOnlyCollection<TransitionConfig>? transitions)
+	public StatechartConfig(int? id, string name, string? description, string? onLoad, string? onUpdate, string? chartStart, string? chartFinish, string? stateEnter, string? stateEntered, string? statePassthrough, string? stateExit, string? initialState, IReadOnlyCollection<StateConfig>? states, IReadOnlyCollection<TransitionConfig>? transitions, string? reference = null)
 	{
 		if (name == null || (name = name.Trim()).Length == 0)
 			throw new ArgumentNullException(nameof(name));
@@ -56,6 +57,7 @@ public class StatechartConfig
 		Transitions = transitions ?? Array.Empty<TransitionConfig>();
 
 		ValidateTokens(States);
+		Reference = reference;
 	}
 
 	private static void ValidateTokens(IReadOnlyCollection<StateConfig> states)
@@ -68,7 +70,7 @@ public class StatechartConfig
 			throw new InvalidOperationException($"State Name value is not unique ({dupName.Key})");
 	}
 
-	public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>?>? actionBuilder = null, Func<string, IStateCondition<T>?>? conditionBuilder = null)
+	public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>?>? actionBuilder = null, Func<string, IStateCondition<T>?>? conditionBuilder = null, Func<string, StatechartConfig>? referenceResolver = null)
 	{
 		scope ??= TokenScope.Create("statechart");
 		actionBuilder ??= StateAction.CSharpScript<T>;
@@ -76,8 +78,14 @@ public class StatechartConfig
 		var token = CreateToken(scope, Id, Name, Description);
 		scope = scope.WithDomain(token);
 
-		var states = States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder)).ToList();
-		var transitions = WithInitial().Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
+		var reference = Reference == null ? null:
+			referenceResolver != null ? referenceResolver(Reference):
+			throw new ArgumentNullException(nameof(referenceResolver));
+
+		var states = States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)).ToList();
+		if (reference?.States.Count > 0)
+			states.AddRange(reference.States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)));
+		var transitions = WithInitial((states[0].Id, states[0].Name), reference).Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
 		var chart = new Statechart<T>(token, states, transitions);
 
 		if (!String.IsNullOrEmpty(OnLoad))
@@ -102,29 +110,42 @@ public class StatechartConfig
 			=> id == null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
 	}
 
-	private IEnumerable<TransitionConfig> WithInitial()
+	private IEnumerable<TransitionConfig> WithInitial((int? Id, string Name) firstState, StatechartConfig? reference)
 	{
-		if (States.Count == 0)
-			return Transitions;
-
-		var first = States.First();
-		var initial = !String.IsNullOrEmpty(InitialState) ? InitialState: first.Id?.ToString(CultureInfo.InvariantCulture) ?? first.Name;
-		return Transitions.Prepend(new TransitionConfig(destination: initial!));
+		string initial;
+		if (!String.IsNullOrEmpty(InitialState))
+			initial = InitialState!;
+		else if (!String.IsNullOrEmpty(reference?.InitialState))
+			initial = reference!.InitialState!;
+		else
+			initial = firstState.Id?.ToString(CultureInfo.InvariantCulture) ?? firstState.Name;
+		var result = Transitions.Prepend(new TransitionConfig(destination: initial));
+		if (reference?.Transitions.Count > 0)
+			result = result.Union(reference.Transitions);
+		return result;
 	}
 
-	public void GenerateCode(TextWriter writer, string objName, string? methodPrefix = null, string? visibility = null, string? indent = null, string? tab = null, bool nullable = false)
+	public void GenerateCode(TextWriter writer, string objName, string? methodPrefix = null, string? visibility = null, string? indent = null, string? tab = null, bool nullable = false, Func<string, StatechartConfig>? referenceResolver = null)
 	{
 		if (writer is null)
 			throw new ArgumentNullException(nameof(writer));
+
+		var reference = Reference == null ? null:
+			referenceResolver != null ? referenceResolver(Reference):
+			throw new ArgumentNullException(nameof(referenceResolver));
 
 		indent ??= "\t";
 		tab ??= "\t";
 		visibility ??= "internal";
 		string q = nullable ? "?": "";
 		string methodName = GetMethodName(Name, methodPrefix ?? "Create");
+
 		var stateNames = new Dictionary<StateConfig, string>();
 		var transitionNames = new Dictionary<TransitionConfig, string>();
-		var chartMethods = States.SelectMany(o => o.Charts ?? Array.Empty<StatechartConfig>()).ToDictionary(o => o, o => GetMethodName(o.Name, methodName + "_"));
+		var states = States.ToList();
+		if (reference?.States.Count > 0)
+			states.AddRange(reference.States);
+		var chartMethods = states.SelectMany(o => o.Charts ?? Array.Empty<StatechartConfig>()).ToDictionary(o => o, o => GetMethodName(o.Name, methodName + "_"));
 
 		writer.WriteLine($"{indent}{visibility} static Statechart<{objName}> {methodName}(ITokenScope{q} root = null)");
 		writer.WriteLine($"{indent}{{");
@@ -134,12 +155,12 @@ public class StatechartConfig
 		writer.WriteLine($"{indent}var token = root.Token({S(Name)});");
 		writer.WriteLine($"{indent}var s = root.WithDomain(token);");
 		writer.WriteLine($"{indent}var t = s.WithTransitionDomain();");
-		if (States.Any(o => o.Charts?.Count > 0))
+		if (states.Any(o => o.Charts?.Count > 0))
 			writer.WriteLine($"{indent}Token tk;");
 		writer.WriteLine();
 
 		int index = 0;
-		foreach (var state in States)
+		foreach (var state in states)
 		{
 			string name = $"s{++index}";
 			stateNames.Add(state, name);
@@ -147,7 +168,7 @@ public class StatechartConfig
 		}
 
 		index = 0;
-		foreach (var transition in WithInitial())
+		foreach (var transition in WithInitial((states[0].Id, states[0].Name), reference))
 		{
 			string name = $"t{++index}";
 			transition.GenerateCode(writer, objName, name, stateNames, indent);
@@ -374,6 +395,7 @@ public class StatechartConfig
 			stateExit: node["stateExit"],
 			initialState: node["initialState"],
 			states: states,
-			transitions: transitions);
+			transitions: transitions,
+			reference: node["reference"] ?? node.Element("reference").Value.TrimToNull());
 	}
 }

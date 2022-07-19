@@ -34,7 +34,7 @@ public class StateConfig
 		Charts = charts;
 	}
 
-	internal State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>?> actionBuilder, Func<string, IStateCondition<T>?> conditionBuilder)
+	internal State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>?> actionBuilder, Func<string, IStateCondition<T>?> conditionBuilder, Func<string, StatechartConfig>? referenceResolver)
 	{
 		if (scope == null)
 			throw new ArgumentNullException(nameof(scope));
@@ -48,7 +48,7 @@ public class StateConfig
 			token: token,
 			guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
 			roles: Roles,
-			charts: Charts?.Select(o => o.Create<T>(scope.WithDomain(token), actionBuilder, conditionBuilder)).ToList());
+			charts: Charts?.Select(o => o.Create<T>(scope.WithDomain(token), actionBuilder, conditionBuilder, referenceResolver)).ToList());
 
 		if (!String.IsNullOrEmpty(StateEnter))
 			state.StateEnter += actionBuilder(StateEnter!);

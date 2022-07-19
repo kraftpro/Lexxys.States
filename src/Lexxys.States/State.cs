@@ -132,13 +132,15 @@ public class State<T>
 
 	internal void OnStateEnter(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateEnter)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnter)}");
 		StateEnter.Invoke(value, statechart, this, transition);
 	}
 
 	internal void OnStateEntered(T value, Statechart<T> statechart, Transition<T> transition, IPrincipal? principal)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateEntered)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEntered)}");
 		StateEntered.Invoke(value, statechart, this, transition);
 		foreach (var chart in Charts)
 		{
@@ -149,13 +151,15 @@ public class State<T>
 
 	internal void OnStatePassthrough(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthrough)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthrough)}");
 		StatePassthrough.Invoke(value, statechart, this, transition);
 	}
 
 	internal void OnStateExit(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateExit)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateExit)}");
 		StateExit.Invoke(value, statechart, this, transition);
 	}
 
@@ -171,13 +175,15 @@ public class State<T>
 
 	internal Task OnStateEnterAsync(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateEnterAsync)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnterAsync)}");
 		return StateEnter.InvokeAsync(value, statechart, this, transition);
 	}
 
 	internal async Task OnStateEnteredAsync(T value, Statechart<T> statechart, Transition<T> transition, IPrincipal? principal)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateEnteredAsync)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateEnteredAsync)}");
 		await StateEntered.InvokeAsync(value, statechart, this, transition).ConfigureAwait(false);
 		if (Charts.Count > 0)
 			await Task.WhenAll(Charts.Select(o => o.StartAsync(value, principal))).ConfigureAwait(false);
@@ -185,13 +191,15 @@ public class State<T>
 
 	internal Task OnStatePassthroughAsync(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthroughAsync)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStatePassthroughAsync)}");
 		return StatePassthrough.InvokeAsync(value, statechart, this, transition);
 	}
 
 	internal Task OnStateExitAsync(T value, Statechart<T> statechart, Transition<T> transition)
 	{
-		Log.Trace($"{Token.FullName()}: {nameof(OnStateExitAsync)}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStateExitAsync)}");
 		return StateExit.InvokeAsync(value, statechart, this, transition);
 	}
 

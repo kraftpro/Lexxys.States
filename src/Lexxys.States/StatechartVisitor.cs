@@ -5,7 +5,7 @@ namespace Lexxys.States;
 public interface IStatechartVisitor<T>
 {
 	void Visit(State<T> state);
-	void Visit(Transition<T> state);
+	void Visit(Transition<T> transition);
 	void Visit(Statechart<T> statechart);
 }
 

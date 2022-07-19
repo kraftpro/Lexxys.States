@@ -143,7 +143,8 @@ public static class StateAction
 			{
 				if (_asyncHandler != null)
 					return;
-				Log.Trace($"Compile '{_expression}'");
+				if (Log.IsEnabled(LogType.Trace))
+					Log.Trace($"Compile '{_expression}'");
 
 				var references = new List<MetadataReference>
 				{
@@ -170,12 +171,14 @@ public static class StateAction
 					typeof(StateActionGlobals<T>)).CreateDelegate();
 				_asyncHandler = (o, c, s, t) =>
 				{
-					Log.Trace($"InvokeAsync '{_expression}' with obj={o}, state={s} and Transition={t}");
+					if (Log.IsEnabled(LogType.Trace))
+						Log.Trace($"InvokeAsync '{_expression}' with obj={o}, state={s} and Transition={t}");
 					return runner.Invoke(new StateActionGlobals<T>(o, c, s, t));
 				};
 				_syncHandler = (o, c, s, t) =>
 				{
-					Log.Trace($"Invoke '{_expression}' with obj={o}, state={s} and Transition={t}");
+					if (Log.IsEnabled(LogType.Trace))
+						Log.Trace($"Invoke '{_expression}' with obj={o}, state={s} and Transition={t}");
 					runner.Invoke(new StateActionGlobals<T>(o, c, s, t)).GetAwaiter().GetResult();
 				};
 			}

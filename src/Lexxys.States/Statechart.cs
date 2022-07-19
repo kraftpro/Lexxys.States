@@ -265,7 +265,8 @@ public class Statechart<T>
 	{
 		foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
 		{
-			Log.Trace($"{item.Token.FullName()} OnLoad");
+			if (Log.IsEnabled(LogType.Trace))
+				Log.Trace($"{item.Token.FullName()} OnLoad");
 			item.OnLoad.Invoke(value, this, null, null);
 		}
 	}
@@ -283,7 +284,8 @@ public class Statechart<T>
 		//}
 		return Task.WhenAll(Charts.Where(o => !o.OnLoad.IsEmpty).Select(o =>
 		{
-			Log.Trace($"{o.Token.FullName()} OnLoadAsync");
+			if (Log.IsEnabled(LogType.Trace))
+				Log.Trace($"{o.Token.FullName()} OnLoadAsync");
 			return o.OnLoad.InvokeAsync(value, o, null, null);
 		}));
 	}
@@ -296,7 +298,8 @@ public class Statechart<T>
 	{
 		foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
 		{
-			Log.Trace($"{item.Token.FullName()} OnUpdate");
+			if (Log.IsEnabled(LogType.Trace))
+				Log.Trace($"{item.Token.FullName()} OnUpdate");
 			item.OnUpdate.Invoke(value, this, null, null);
 		}
 	}
@@ -314,7 +317,8 @@ public class Statechart<T>
 		//}
 		return Task.WhenAll(Charts.Where(o => !o.OnUpdate.IsEmpty).Select(o =>
 		{
-			Log.Trace($"{o.Token.FullName()} OnUpdateAsync");
+			if (Log.IsEnabled(LogType.Trace))
+				Log.Trace($"{o.Token.FullName()} OnUpdateAsync");
 			return o.OnUpdate.InvokeAsync(value, o, null, null);
 		}));
 	}
@@ -468,7 +472,8 @@ public class Statechart<T>
 	{
 		if (StateExit.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnStateExit)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateExit)} {state.Token.FullName()}");
 		StateExit.Invoke(context, this, state, transition);
 	}
 
@@ -476,7 +481,8 @@ public class Statechart<T>
 	{
 		if (StateEntered.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnStateEntered)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateEntered)} {state.Token.FullName()}");
 		StateEntered.Invoke(context, this, state, transition);
 	}
 
@@ -484,7 +490,8 @@ public class Statechart<T>
 	{
 		if (StatePassthrough.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnStatePassthrough)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStatePassthrough)} {state.Token.FullName()}");
 		StatePassthrough.Invoke(context, this, state, transition);
 	}
 
@@ -492,23 +499,26 @@ public class Statechart<T>
 	{
 		if (StateEnter.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnStateEnter)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateEnter)} {state.Token.FullName()}");
 		StateEnter.Invoke(context, this, state, transition);
 	}
 
 	private void OnStart(T context)
 	{
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnStart)}");
 		if (ChartStart.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnStart)} {Token.FullName()}");
 		ChartStart.Invoke(context, this, null, null);
 	}
 
 	private void OnFinish(T context)
 	{
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Token.FullName()}: {nameof(OnFinish)}");
 		if (ChartFinish.IsEmpty)
 			return;
-		Log.Trace($"Invoke {nameof(OnFinish)} {Token.FullName()}");
 		ChartFinish.Invoke(context, this, null, null);
 	}
 
@@ -594,7 +604,8 @@ public class Statechart<T>
 	{
 		if (StateExit.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnStateExitAsync)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateExitAsync)} {state.Token.FullName()}");
 		return StateExit.InvokeAsync(context, this, state, transition);
 	}
 
@@ -602,7 +613,8 @@ public class Statechart<T>
 	{
 		if (StateEntered.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnStateEnteredAsync)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateEnteredAsync)} {state.Token.FullName()}");
 		return StateEntered.InvokeAsync(context, this, state, transition);
 	}
 
@@ -610,7 +622,8 @@ public class Statechart<T>
 	{
 		if (StatePassthrough.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnStatePassthroughAsync)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStatePassthroughAsync)} {state.Token.FullName()}");
 		return StatePassthrough.InvokeAsync(context, this, state, transition);
 	}
 
@@ -618,7 +631,8 @@ public class Statechart<T>
 	{
 		if (StateEnter.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnStateEnterAsync)} {state.Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStateEnterAsync)} {state.Token.FullName()}");
 		return StateEnter.InvokeAsync(context, this, state, transition);
 	}
 
@@ -626,7 +640,8 @@ public class Statechart<T>
 	{
 		if (ChartStart.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnStartAsync)} {Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnStartAsync)} {Token.FullName()}");
 		return ChartStart.InvokeAsync(context, this, null, null);
 	}
 
@@ -634,7 +649,8 @@ public class Statechart<T>
 	{
 		if (ChartFinish.IsEmpty)
 			return Task.CompletedTask;
-		Log.Trace($"Invoke {nameof(OnFinishAsync)} {Token.FullName()}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"Invoke {nameof(OnFinishAsync)} {Token.FullName()}");
 		return ChartFinish.InvokeAsync(context, this, null, null);
 	}
 

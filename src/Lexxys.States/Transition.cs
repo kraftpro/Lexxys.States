@@ -61,7 +61,8 @@ public class Transition<T>
 
 	internal void OnMoveAlong(T value, Statechart<T> statechart)
 	{
-		Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlong)} {Source.Name} -> {Destination.Name}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlong)} {Source.Name} -> {Destination.Name}");
 		Action?.Invoke(value, statechart, Source, this);
 	}
 
@@ -80,7 +81,8 @@ public class Transition<T>
 
 	internal Task OnMoveAlongAsync(T value, Statechart<T> statechart)
 	{
-		Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlongAsync)} {Source.Name} -> {Destination.Name}");
+		if (Log.IsEnabled(LogType.Trace))
+			Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlongAsync)} {Source.Name} -> {Destination.Name}");
 		return Action != null ? Action.InvokeAsync(value, statechart, Source, this): Task.CompletedTask;
 	}
 
