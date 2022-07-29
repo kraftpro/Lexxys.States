@@ -229,6 +229,7 @@ statecharts
 			transition		Reset => Initialized
 
 			statechart TextVerification
+				:initialState	Text
 
 				state Text
 					:stateEnter		obj.SendToken();

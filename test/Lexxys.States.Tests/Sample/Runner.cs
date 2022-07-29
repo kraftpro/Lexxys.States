@@ -11,29 +11,47 @@ namespace Lexxys.States.Tests.Sample
 		const int LOAD = 55;
 		const int UPDATE = 66;
 
-		public static void Go(string[] args)
-		{
-			var chart = Initialize(args);
-			if (chart == null)
-				return;
-			Run(new Entity(chart.Charts.Count), chart);
-		}
-
-		public static async Task GoAsync(string[] args)
-		{
-			var chart = Initialize(args);
-			if (chart == null)
-				return;
-			await RunAsync(new Entity(chart.Charts.Count), chart);
-		}
-
-		private static Statechart<Entity>? Initialize(string[] args)
+		public static async Task Go(string[] args)
 		{
 			StaticServices.AddFactory(ConsoleLoggerFactory.Instance);
 			StaticServices.ConfigService().AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
 
-			string chartName = GetChartName(args);
-			var chart = ChartFactory.GetStatechart<Entity>(chartName);
+			bool sync = args.Any(o => o == "sync");
+			bool compile = args.Any(o => o == "compile");
+			var name = GetChartName(args);
+			if (name == null)
+				return;
+			if (!compile)
+			{
+				Console.Write("Compile [N] ? ");
+				var k = Console.ReadKey(true);
+				if (k.KeyChar == 'y' || k.KeyChar == 'Y')
+					compile = true;
+				Console.WriteLine(compile ? "Y" : "N");
+			}
+			var chart = GetStatechart(name, compile);
+			if (chart == null)
+				return;
+
+			if (!sync)
+			{
+				Console.Write("Sync [N] ? ");
+				var k = Console.ReadKey(true);
+				if (k.KeyChar == 'y' || k.KeyChar == 'Y')
+					sync = true;
+				Console.WriteLine(sync ? "Y": "N");
+			}
+
+
+			if (sync)
+				Run(new Entity(chart.Charts.Count), chart);
+			else
+				await RunAsync(new Entity(chart.Charts.Count), chart);
+		}
+
+		private static Statechart<Entity>? GetStatechart(string name, bool compile)
+		{
+			var chart = ChartFactory.GetStatechart<Entity>(name, compile);
 			if (chart == null)
 			{
 				Console.WriteLine("Cannot create a statechart");
@@ -42,11 +60,11 @@ namespace Lexxys.States.Tests.Sample
 			chart.OnUpdate += StateAction.Create<Entity>(
 				(o, c, s, t) => {
 					Console.WriteLine("Running Update");
-					o.SetStates(c.Charts.Select(s => s.CurrentState?.Id).ToList());
+					o.SetStates(c.Charts.Select(s => s.CurrentState.Id).ToList());
 				},
 				(o, c, s, t) => {
 					Console.WriteLine("Running UpdateAsync");
-					o.SetStates(c.Charts.Select(s => s.CurrentState?.Id).ToList()); return Task.CompletedTask;
+					o.SetStates(c.Charts.Select(s => s.CurrentState.Id).ToList()); return Task.CompletedTask;
 				});
 			chart.OnLoad += StateAction.Create<Entity>(
 				(o, c, s, t) => {
@@ -69,12 +87,13 @@ namespace Lexxys.States.Tests.Sample
 			return chart;
 		}
 
-		static string GetChartName(string[] args)
+		static string? GetChartName(string[] args)
 		{
-			if (args.Length > 0)
-				return args[0];
-
 			var items = ChartFactory.ListStatecharts().ToList();
+			var name = args.FirstOrDefault(o => items.Contains(o));
+			if (name != null)
+				return name;
+
 			for (; ; )
 			{
 				for (int i = 0; i < items.Count; ++i)
@@ -85,6 +104,8 @@ namespace Lexxys.States.Tests.Sample
 				}
 				Console.Write("> ");
 				var s = Console.ReadLine();
+				if (String.IsNullOrEmpty(s))
+					return null;
 				if (int.TryParse(s, out var j) && j >= 1 && j <= items.Count)
 					return items[j - 1];
 			}

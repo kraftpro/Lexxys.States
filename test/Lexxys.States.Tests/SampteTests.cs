@@ -240,7 +240,7 @@ namespace Lexxys.States.Tests
 		{
 			var (obj, sample) = Run_UploadDoc1();
 			sample.OnLoad += (o, c) => Array.ForEach(o.GetStates(), s => c.Charts.First(x => x.Name == s.Name).SetCurrentState(s.Value));
-			sample.OnUpdate += (o, c) => o.SetStates(c.Charts.Select(s => (s.Name, s.CurrentState?.Name)));
+			sample.OnUpdate += (o, c) => o.SetStates(c.Charts.Select(s => (s.Name, s.CurrentState.Name)));
 
 			// Save current state
 			sample.Update(obj);
@@ -277,7 +277,7 @@ namespace Lexxys.States.Tests
 			public string?[] State { get; set; } = new string[3];
 			private static string[] Names = new[] { "sample-1", "Doc1", "Doc2" };
 
-			public void SetStates(IEnumerable<(string Name, string? Value)> states)
+			public void SetStates(IEnumerable<(string Name, string Value)> states)
 			{
 				foreach (var state in states)
 				{

@@ -52,7 +52,7 @@ public class TransitionConfig
 		var transition = new Transition<T>(
 			source: IsEmptyReference(Source) ? null: FindState(Source!, states),
 			destination: FindState(Destination, states),
-			@event: CreateToken(scope, Id, Name, Description),
+			@event: CreateToken(scope.Scope(scope.Token(TokenDomain)), Id, Name, Description),
 			continues: Continues,
 			action: String.IsNullOrEmpty(Action) ? null: actionBuilder(Action!),
 			guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
@@ -95,9 +95,9 @@ public class TransitionConfig
 	static Token CreateToken(ITokenScope scope, int? id, string? name, string? description)
 	{
 		if (id != null)
-			return scope.Token(id.GetValueOrDefault(), name, description, scope.Token(TokenDomain));
+			return scope.Token(id.GetValueOrDefault(), name, description);
 		if (name != null)
-			return scope.Token(name, description, scope.Token(TokenDomain));
+			return scope.Token(name, description);
 		return Token.Empty;
 	}
 

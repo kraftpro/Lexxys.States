@@ -15,13 +15,15 @@ public class Entity
 		State = new int?[width];
 	}
 
-	public void SetStates(IReadOnlyList<int?> items)
+	public void SetStates(IReadOnlyList<int> items)
 	{
 		if (items.Count != State.Length)
 			throw new ArgumentException($"The number of the items differs from the number of state slots", nameof(items));
 		for (int i = 0; i < State.Length; ++i)
 		{
-			State[i] = items[i];
+			State[i] = Nil(items[i]);
 		}
+
+		static int? Nil(int value) => value == 0 ? null: value;
 	}
 }

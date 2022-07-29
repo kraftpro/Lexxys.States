@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -116,40 +117,43 @@ public class Token
 
 		public Token Domain => Empty;
 
-		public bool Contains(Token? token)
-			=> token.IsEmpty() || (_tokens.TryGetValue(token!.Domain, out var tokens) && Array.IndexOf(tokens.Items, token) >= 0);
+		public ITokenScope Scope(Token domain) =>
+			domain.IsEmpty() ?
+				this:
+			Contains(domain) ?
+				new ScopedTokenScope(this, domain):
+				throw new ArgumentOutOfRangeException(nameof(domain), domain, null);
 
-		public ITokenScope WithDomain(Token domain)
-			=> domain.IsEmpty() ? this: new TokenScopeWithDomain(this, domain);
+		public Token Token(int id, string? name, string? description = null) => CreateToken(id, name, description, Domain);
 
-		public Token? Find(int id, Token? domain = null)
-			=> _tokens.TryGetValue(domain ?? Domain, out var tokens) ? tokens.Items.FirstOrDefault(o => o.Id == id): null;
+		public Token Token(string name, string? description = null) => CreateToken(name, description, Domain);
 
-		public Token Token(int id, string? name, string? description = null, Token? domain = null)
+		private bool Contains(Token token) =>
+			token.Domain.IsEmpty() ? _tokens.TryGetValue(token.Domain, out var tokens) && Array.IndexOf(tokens.Items, token) >= 0: _tokens.ContainsKey(token.Domain);
+
+		private Token CreateToken(int id, string? name, string? description, Token domain)
 		{
 			if (id >= MinDynamicIndex)
 				throw new ArgumentOutOfRangeException(nameof(id), id, null);
 			if (name != null && (name = name.Trim()).Length == 0)
 				name = null;
-			domain ??= Domain;
-			return Token(
+			return CreateToken(
 				o => o.Id == id,
 				() => new Token(id, name ?? throw new ArgumentNullException(nameof(name)), description, domain),
 				domain);
 		}
 
-		public Token Token(string name, string? description = null, Token? domain = null)
+		private Token CreateToken(string name, string? description, Token domain)
 		{
 			if (name == null || (name = name.Trim()).Length == 0)
 				throw new ArgumentNullException(nameof(name));
-			domain ??= Domain;
-			return Token(
+			return CreateToken(
 				o => String.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase),
 				() => new Token(Interlocked.Increment(ref _index), name, description, domain),
 				domain);
 		}
 
-		public Token Token(Func<Token, bool> predicate, Func<Token> constructor, Token domain)
+		private Token CreateToken(Func<Token, bool> predicate, Func<Token> constructor, Token domain)
 		{
 			Token? item = null;
 			var items = _tokens.GetOrAdd(domain, o => new (new[] { item = constructor() }));
@@ -158,7 +162,11 @@ public class Token
 			#pragma warning restore CA1508 // Avoid dead conditional code
 		}
 
-		class TokenCollection
+		public IEnumerator<Token> GetEnumerator() => _tokens[Domain].GetEnumerator();
+
+		IEnumerator IEnumerable.GetEnumerator() => _tokens[Domain].GetEnumerator();
+
+		class TokenCollection: IEnumerable<Token>
 		{
 			volatile public Token[] Items;
 
@@ -176,18 +184,22 @@ public class Token
 					var tmp = new Token[items.Length + 1];
 					Array.Copy(items, tmp, items.Length);
 					value ??= constructor();
-					tmp[tmp.Length - 1] = value;
+					tmp[items.Length] = value;
 					if (Interlocked.CompareExchange(ref Items, tmp, items) == items)
 						return value;
 				}
 			}
+
+			public IEnumerator<Token> GetEnumerator() => ((IEnumerable<Token>)Items).GetEnumerator();
+
+			IEnumerator IEnumerable.GetEnumerator() => Items.GetEnumerator();
 		}
 
-		class TokenScopeWithDomain: ITokenScope
+		class ScopedTokenScope: ITokenScope, IEquatable<ScopedTokenScope>
 		{
-			private readonly ITokenScope _scope;
+			private readonly TokenScope _scope;
 
-			public TokenScopeWithDomain(ITokenScope scope, Token domain)
+			public ScopedTokenScope (TokenScope scope, Token domain)
 			{
 				_scope = scope ?? throw new ArgumentNullException(nameof(scope));
 				Domain = domain ?? throw new ArgumentNullException(nameof(domain));
@@ -195,24 +207,24 @@ public class Token
 
 			public Token Domain { get; }
 
-			public Token? Find(int id, Token? domain = null)
-				=> _scope.Find(id, Coalesce(domain, Domain));
+			public Token Token(int id, string? name = null, string? description = null) => _scope.CreateToken(id, name, description, Domain);
 
-			public Token Token(int id, string? name = null, string? description = null, Token? domain = null)
-				=> _scope.Token(id, name, description, Coalesce(domain, Domain));
+			public Token Token(string name, string? description = null) => _scope.CreateToken(name, description, Domain);
 
-			public Token Token(string name, string? description = null, Token? domain = null)
-				=> _scope.Token(name, description, Coalesce(domain, Domain));
-
-			public ITokenScope WithDomain(Token domain)
+			public ITokenScope Scope(Token domain)
 				=> domain == Domain ? this:
-				Domain.Contains(domain) ? new TokenScopeWithDomain(_scope, domain):
+				Domain.Contains(domain) ? new ScopedTokenScope (_scope, domain):
 				throw new ArgumentOutOfRangeException(nameof(domain));
 
-			private static Token Coalesce(Token? domain, Token root)
-				=> domain == null || domain == root ? root:
-				root.Contains(domain) ? domain:
-				throw new ArgumentOutOfRangeException(nameof(domain));
+			public IEnumerator<Token> GetEnumerator() => _scope._tokens[Domain].GetEnumerator();
+
+			IEnumerator IEnumerable.GetEnumerator() => _scope._tokens[Domain].GetEnumerator();
+
+			public override bool Equals(object? obj) => obj is ScopedTokenScope scope ? Equals(scope): false;
+
+			public bool Equals(ScopedTokenScope? other) => other is not null && _scope == other._scope && Domain == other.Domain;
+
+			public override int GetHashCode() => HashCode.Join(_scope.GetHashCode(), Domain.GetHashCode());
 		}
 	}
 }

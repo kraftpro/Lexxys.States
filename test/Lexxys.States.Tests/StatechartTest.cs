@@ -64,7 +64,7 @@ namespace Lexxys.States.Tests
 			var chart = Charts.CreateLoginChart();
 			var tf = chart.GetTokenFactory();
 			var stf = tf;
-			var ttf = tf.WithTransitionDomain();
+			var ttf = tf.TransitionScope();
 
 			chart.Start(x);
 			var events = chart.GetActiveEvents(x);
@@ -84,7 +84,7 @@ namespace Lexxys.States.Tests
 			var chart = Charts.CreateLoginChart();
 			var tf = chart.GetTokenFactory();
 			var stf = tf;
-			var ttf = tf.WithTransitionDomain();
+			var ttf = tf.TransitionScope();
 
 			chart.Start(x);
 
@@ -116,7 +116,7 @@ namespace Lexxys.States.Tests
 			var chart = Charts.CreateLogin2Chart();
 			var tf = chart.GetTokenFactory();
 			var stf = tf;
-			var ttf = tf.WithTransitionDomain();
+			var ttf = tf.TransitionScope();
 
 			chart.Start(x);
 
@@ -140,7 +140,7 @@ namespace Lexxys.States.Tests
 			var chart = Charts.CreateLogin2Chart();
 			var tf = chart.GetTokenFactory();
 			var stf = tf;
-			var ttf = tf.WithTransitionDomain();
+			var ttf = tf.TransitionScope();
 
 			chart.Start(x);
 
@@ -170,7 +170,7 @@ namespace Lexxys.States.Tests
 
 			var tf = chart.GetTokenFactory();
 			var stf = tf;
-			var ttf = tf.WithTransitionDomain();
+			var ttf = tf.TransitionScope();
 
 			chart.Start(x);
 

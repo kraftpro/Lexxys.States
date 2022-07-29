@@ -1,22 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 
 namespace Lexxys.States;
-
-using System.Collections.Immutable;
-using System.Globalization;
-using System.Text.RegularExpressions;
-
-using Lexxys;
-
 using Xml;
 
 public class StatechartConfig
@@ -76,16 +72,17 @@ public class StatechartConfig
 		actionBuilder ??= StateAction.CSharpScript<T>;
 		conditionBuilder ??= StateCondition.CSharpScript<T>;
 		var token = CreateToken(scope, Id, Name, Description);
-		scope = scope.WithDomain(token);
+		scope = scope.Scope(token);
 
 		var reference = Reference == null ? null:
 			referenceResolver != null ? referenceResolver(Reference):
 			throw new ArgumentNullException(nameof(referenceResolver));
 
 		var states = States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)).ToList();
+		List<string?> exclude = new List<string?>(states.Select(o => o.Name));
 		if (reference?.States.Count > 0)
-			states.AddRange(reference.States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)));
-		var transitions = WithInitial((states[0].Id, states[0].Name), reference).Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
+			states.AddRange(reference.States.Where(o => !exclude.Contains(o.Name)).Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)));
+		var transitions = WithInitial(states.Select(o => ((int?)o.Id, o.Name)), reference, exclude).Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
 		var chart = new Statechart<T>(token, states, transitions);
 
 		if (!String.IsNullOrEmpty(OnLoad))
@@ -110,19 +107,32 @@ public class StatechartConfig
 			=> id == null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
 	}
 
-	private IEnumerable<TransitionConfig> WithInitial((int? Id, string Name) firstState, StatechartConfig? reference)
+	private IEnumerable<TransitionConfig> WithInitial(IEnumerable<(int? Id, string Name)> states, StatechartConfig? reference, List<string?> exclude)
 	{
+		List<TransitionConfig> transitions = Transitions.ToList();
+		if (reference?.Transitions.Count > 0)
+			transitions.AddRange(reference.Transitions.Where(o => !exclude.Contains(o.Source)));
+
 		string initial;
 		if (!String.IsNullOrEmpty(InitialState))
+		{
 			initial = InitialState!;
+		}
 		else if (!String.IsNullOrEmpty(reference?.InitialState))
+		{
 			initial = reference!.InitialState!;
+		}
 		else
-			initial = firstState.Id?.ToString(CultureInfo.InvariantCulture) ?? firstState.Name;
-		var result = Transitions.Prepend(new TransitionConfig(destination: initial));
-		if (reference?.Transitions.Count > 0)
-			result = result.Union(reference.Transitions);
-		return result;
+		{
+			var nip = states.Where(o => !transitions.Any(t => t.Destination == o.Name || int.TryParse(t.Destination, out var n) && n == o.Id)).ToList();
+			if (nip.Count == 0)
+				throw new InvalidOperationException($"Cannot find the initial state for statechart {Name}.");
+			if (nip.Count > 1)
+				throw new InvalidOperationException($"Multiple initial states found for statechart {Name}.");
+			initial = nip[0].Id?.ToString(CultureInfo.InvariantCulture) ?? nip[0].Name;
+		}
+		transitions.Insert(0, new TransitionConfig(destination: initial));
+		return transitions;
 	}
 
 	public void GenerateCode(TextWriter writer, string objName, string? methodPrefix = null, string? visibility = null, string? indent = null, string? tab = null, bool nullable = false, Func<string, StatechartConfig>? referenceResolver = null)
@@ -143,8 +153,9 @@ public class StatechartConfig
 		var stateNames = new Dictionary<StateConfig, string>();
 		var transitionNames = new Dictionary<TransitionConfig, string>();
 		var states = States.ToList();
+		var exclude = new List<string?>(states.Select(o => o.Name));
 		if (reference?.States.Count > 0)
-			states.AddRange(reference.States);
+			states.AddRange(reference.States.Where(o => !exclude.Contains(o.Name)));
 		var chartMethods = states.SelectMany(o => o.Charts ?? Array.Empty<StatechartConfig>()).ToDictionary(o => o, o => GetMethodName(o.Name, methodName + "_"));
 
 		writer.WriteLine($"{indent}{visibility} static Statechart<{objName}> {methodName}(ITokenScope{q} root = null)");
@@ -153,8 +164,8 @@ public class StatechartConfig
 		indent += tab;
 		writer.WriteLine($"{indent}root ??= TokenScope.Create(\"statechart\");");
 		writer.WriteLine($"{indent}var token = root.Token({S(Name)});");
-		writer.WriteLine($"{indent}var s = root.WithDomain(token);");
-		writer.WriteLine($"{indent}var t = s.WithTransitionDomain();");
+		writer.WriteLine($"{indent}var s = root.Scope(token);");
+		writer.WriteLine($"{indent}var t = s.TransitionScope();");
 		if (states.Any(o => o.Charts?.Count > 0))
 			writer.WriteLine($"{indent}Token tk;");
 		writer.WriteLine();
@@ -168,7 +179,7 @@ public class StatechartConfig
 		}
 
 		index = 0;
-		foreach (var transition in WithInitial((states[0].Id, states[0].Name), reference))
+		foreach (var transition in WithInitial(states.Select(o => (o.Id, o.Name)), reference, exclude))
 		{
 			string name = $"t{++index}";
 			transition.GenerateCode(writer, objName, name, stateNames, indent);
@@ -203,7 +214,7 @@ public class StatechartConfig
 				foreach (var chart in s.Charts)
 				{
 					writer.WriteLine();
-					chart.GenerateCode(writer, objName, methodName + "_", "private", indent0, tab, nullable);
+					chart.GenerateCode(writer, objName, methodName + "_", "private", indent0, tab, nullable, referenceResolver);
 				}
 			}
 		}
@@ -214,7 +225,7 @@ public class StatechartConfig
 	private static string GetMethodName(string name, string namePrefix) => namePrefix + Regex.Replace(Strings.ToPascalCase(name), @"[_\W]+", "_");
 
 
-	public Func<ITokenScope?, Statechart<T>> GenerateLambda<T>(string? methodPrefix = null, string? className = null, string? nameSpace = null, IEnumerable<string>? usings = null)
+	public Func<ITokenScope?, Statechart<T>> GenerateLambda<T>(string? methodPrefix = null, string? className = null, string? nameSpace = null, IEnumerable<string>? usings = null, Func<string, StatechartConfig>? referenceResolver = null)
 	{
 		var text = new StringBuilder();
 		className ??= "StatechartFactory";
@@ -241,7 +252,7 @@ public class StatechartConfig
 			}
 			writer.WriteLine($"{indent}public static partial class {className}");
 			writer.WriteLine($"{indent}{{");
-			GenerateCode(writer, typeof(T).GetTypeName(true), methodPrefix, "public", indent: indent + tab, tab: tab, nullable: true);
+			GenerateCode(writer, typeof(T).GetTypeName(true), methodPrefix, "public", indent: indent + tab, tab: tab, nullable: true, referenceResolver);
 			writer.WriteLine($"{indent}}}");
 			if (!String.IsNullOrEmpty(nameSpace))
 				writer.WriteLine("}");

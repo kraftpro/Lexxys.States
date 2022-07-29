@@ -1,5 +1,4 @@
-﻿//#define TRACE_ROSLYN
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;

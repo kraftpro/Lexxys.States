@@ -18,9 +18,9 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> LoginPattern<T>(ITokenScope root, Func<T, bool> success)
 		{
 			var token = root.Token(typeof(T));
-			var scope = root.WithDomain(token);
+			var scope = root.Scope(token);
 			var s = scope;
-			var t = scope.WithTransitionDomain();
+			var t = scope.TransitionScope();
 
 			var initialized = new State<T>(s.Token(LoginStates.Initialized, "Initial login state"));
 			var nameEntered = new State<T>(s.Token(LoginStates.NameEntered, "Name has been entered"));
@@ -54,9 +54,9 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> InsidePattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
-			var scope = root.WithDomain(token);
+			var scope = root.Scope(token);
 			var s = scope;
-			var t = scope.WithTransitionDomain();
+			var t = scope.TransitionScope();
 
 			var s1 = new State<T>(s.Token(InsideState.Desition, "Inside initial state"));
 			var s2 = new State<T>(s.Token(InsideState.Action, "Inside action state"), charts: new[] { chart });
@@ -75,9 +75,9 @@ namespace Lexxys.States.Tests
 		public static Statechart<T> HoldPattern<T>(ITokenScope root, Statechart<T> chart)
 		{
 			var token = root.Token(typeof(T));
-			var scope = root.WithDomain(token);
+			var scope = root.Scope(token);
 			var s = scope;
-			var t = scope.WithTransitionDomain();
+			var t = scope.TransitionScope();
 
 			var s1 = new State<T>(s.Token(HoldState.Running, "Running state"), charts: new[] { chart });
 			var s2 = new State<T>(s.Token(HoldState.Hold, "Hold state"));
@@ -93,12 +93,12 @@ namespace Lexxys.States.Tests
 		}
 
 		public static ITokenScope GetTokenFactory<T>(this Statechart<T> statechart)
-			=> TokenScope.Create("statechart").WithDomain(typeof(T));
+			=> TokenScope.Create("statechart").Scope(typeof(T));
 
 		public static Statechart<T> CreateSampleOne<T>()
 		{
-			var s = TokenScope.Create("statechart", "sample_1");
-			var t = s.WithTransitionDomain();
+			var s = TokenScope.Create("statechart").Scope("sample_1");
+			var t = s.TransitionScope();
 			//var s1 = new State<T>(s.Token(1, "Start"));
 			//var s2 = new State<T>(s.Token(2, "Uploading"));
 			//var s3 = new State<T>(s.Token(3, "Aborted"));

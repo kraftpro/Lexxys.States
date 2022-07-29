@@ -199,7 +199,7 @@ public class Statechart<T>
 	/// <param name="stateId"><see cref="Token"/> ID.</param>
 	/// <exception cref="ArgumentOutOfRangeException"></exception>
 	public void SetCurrentState(int? stateId)
-		=> CurrentState = stateId is null ? State<T>.Empty: States.FirstOrDefault(o => o.Id == stateId) ?? throw new ArgumentOutOfRangeException(nameof(stateId), stateId, null);
+		=> CurrentState = stateId is null || stateId == 0 ? State<T>.Empty: States.FirstOrDefault(o => o.Id == stateId) ?? throw new ArgumentOutOfRangeException(nameof(stateId), stateId, null);
 
 	/// <summary>
 	/// Set <see cref="CurrentState"/> by <see cref="Token"/> Name.

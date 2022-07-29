@@ -18,5 +18,16 @@ internal class ChartFactory
 
 	public static IEnumerable<string> ListStatecharts() => Configuration.Value.Select(o => o.Name);
 
-	public static Statechart<T>? GetStatechart<T>(string name) => Configuration.Value.FirstOrDefault(x => x.Name == name)?.Create<T>(referenceResolver: o => Configuration.Value.First(p => p.Name == o));
+	public static Statechart<T>? GetStatechart<T>(string name, bool compile, Func<string, IStateAction<T>?>? actionBuilder = null)
+	{
+		var config = Configuration.Value.FirstOrDefault(x => x.Name == name);
+		return
+			config == null ? null:
+			compile ?
+				config.GenerateLambda<T>(referenceResolver: ReferenceResolver).Invoke(null):
+				config.Create<T>(actionBuilder: actionBuilder, referenceResolver: ReferenceResolver);
+
+		static StatechartConfig ReferenceResolver(string name) => Configuration.Value.First(o => o.Name == name);
+	}
+
 }

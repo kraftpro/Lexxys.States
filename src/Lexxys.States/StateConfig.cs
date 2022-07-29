@@ -48,7 +48,7 @@ public class StateConfig
 			token: token,
 			guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
 			roles: Roles,
-			charts: Charts?.Select(o => o.Create<T>(scope.WithDomain(token), actionBuilder, conditionBuilder, referenceResolver)).ToList());
+			charts: Charts?.Select(o => o.Create<T>(scope.Scope(token), actionBuilder, conditionBuilder, referenceResolver)).ToList());
 
 		if (!String.IsNullOrEmpty(StateEnter))
 			state.StateEnter += actionBuilder(StateEnter!);
@@ -97,7 +97,7 @@ public class StateConfig
 	internal void GenerateCode(TextWriter writer, string objName, string varName, string scope, string temp, Dictionary<StatechartConfig, string> chartMethods, string indent)
 	{
 		writer.WriteLine(TrimEnd(
-			$"{indent}var {varName} = new State<{objName}>({T(scope, Id, Name, Description, Charts?.Count > 0 ? temp: null)}, {CC(Charts, chartMethods, $"s.WithDomain({temp})")}, {P(Guard, objName)}, {RR(Roles)}",
+			$"{indent}var {varName} = new State<{objName}>({T(scope, Id, Name, Description, Charts?.Count > 0 ? temp: null)}, {CC(Charts, chartMethods, $"s.Scope({temp})")}, {P(Guard, objName)}, {RR(Roles)}",
 			", null, null, null") + ");");
 		if (!String.IsNullOrEmpty(StateEnter))
 			writer.WriteLine($"{indent}{varName}.StateEnter += {A(StateEnter, objName)};");

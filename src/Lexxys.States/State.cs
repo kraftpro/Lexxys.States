@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
 using System.Text;
@@ -53,7 +52,7 @@ public class State<T>
 	/// <summary>
 	/// State ID from the <see cref="Token"/>
 	/// </summary>
-	public int? Id => IsEmpty ? null : Token.Id;
+	public int Id => Token.Id;
 	/// <summary>
 	/// State name from the <see cref="Token"/>
 	/// </summary>

@@ -37,7 +37,7 @@ statecharts
   #   :continues   (yes/no)
   #   :role
 
-  statechart sample-1 1
+  statechart sample-1
     :initialState Ready
 
     - Ready 1
@@ -54,17 +54,50 @@ statecharts
       statechart Doc1 1
         - Waiting 11
           - Upload => Uploaded
-        - Uploaded 12
+        - Uploaded 22
           - Verify => Verified
         - Verified 33
       statechart Doc2 2
-        - Waiting 1
+        - Waiting 11
           - Upload => Uploaded
-        - Uploaded 2
+        - Uploaded 22
           - Verify => Verified
         - Verified 33
+
+    - OnHold 4
+      - Restart => Ready
+      - Resume => Uploading
+        :continues true
+
+    - Completed 99
+
+  statechart sample-2
+    :initialState Ready
+
+    - Ready 1
+      - Begin => Uploading
+      - Abort => Aborted
+
+    - Aborted 2
+
+    - Uploading 3
+      - Hold => OnHold
+      - Reupload => Uploading
+      -  => Completed
+        :guard state.IsFinished
+      statechart Doc1 1
+        - Waiting 11
+          - Upload => Uploaded
+        - Uploaded 22
+          - Verify => Verified
+        - Verified 33
+      statechart Doc2 2
+        :reference .document-upload
       statechart Doc3 3
         :reference .document-upload
+        - Verified 31
+          - Approve => Approved
+        - Approved 44
 
     - OnHold 4
       - Restart => Ready

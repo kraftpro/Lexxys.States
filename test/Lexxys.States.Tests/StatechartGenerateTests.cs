@@ -28,8 +28,8 @@ namespace Lexxys.States.Tests
 			var text = new StringBuilder();
 			using (var writer = new StringWriter(text))
 			{
-				writer.WriteLine("\t\t// Generated SipleCodeTest");
-				chart.GenerateCode(writer, "Login", "CreateStatechart", "public", nullable: true);
+				writer.WriteLine("\t\t// Generated SimpleCodeTest");
+				chart.GenerateCode(writer, "Login", "CreateStatechart", "public", indent: "\t\t", nullable: true);
 			}
 			var code = text.ToString();
 			Assert.IsTrue(code.Length > 0);
@@ -43,7 +43,7 @@ namespace Lexxys.States.Tests
 			using (var writer = new StringWriter(text))
 			{
 				writer.WriteLine("\t\t// Generated SubchatsCodeTest");
-				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", nullable: true);
+				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", indent: "\t\t", nullable: true);
 			}
 			var code = text.ToString();
 			Assert.IsTrue(code.Length > 0);
@@ -124,13 +124,15 @@ namespace Lexxys.States.Tests
 			Assert.IsNotNull(statechart);
 		}
 
-		// Generated SipleCodeTest
+		#region Generated code
+
+		// Generated SimpleCodeTest
 		public static Statechart<Login> CreateStatechartLogin(ITokenScope? root = null)
 		{
 			root ??= TokenScope.Create("statechart");
 			var token = root.Token("Login");
-			var s = root.WithDomain(token);
-			var t = s.WithTransitionDomain();
+			var s = root.Scope(token);
+			var t = s.TransitionScope();
 
 			var s1 = new State<Login>(s.Token(1, "Initialized", "Initial login state"));
 			var s2 = new State<Login>(s.Token(2, "NameEntered", "Name has been entered"));
@@ -157,16 +159,17 @@ namespace Lexxys.States.Tests
 		{
 			root ??= TokenScope.Create("statechart");
 			var token = root.Token("Login2");
-			var s = root.WithDomain(token);
-			var t = s.WithTransitionDomain();
+			var s = root.Scope(token);
+			var t = s.TransitionScope();
+			Token tk;
 
 			var s1 = new State<Login2>(s.Token(1, "Initialized", "Initial login state"));
 			var s2 = new State<Login2>(s.Token(2, "NameEntered", "Name has been entered"));
 			var s3 = new State<Login2>(s.Token(3, "PasswordEntered", "Password has been entered"));
 			var s4 = new State<Login2>(s.Token(4, "NameAndPasswordEntered", "Both name and password are entered"));
-			var s5 = new State<Login2>(s.Token(5, "Authenticate", "Authenticate user"), new[] { CreateStatechartLogin2_TextVerification(s) });
+			var s5 = new State<Login2>(tk = s.Token(5, "Authenticate", "Authenticate user"), new[] { CreateStatechartLogin2_TextVerification(s.Scope(tk)) });
 			var s6 = new State<Login2>(s.Token(99, "Authenticated", "The user is authenticated"));
-			var t1 = new Transition<Login2>(State<Login2>.Empty, s1);
+			var t1 = new Transition<Login2>(State<Login2>.Empty, s6);
 			var t2 = new Transition<Login2>(s1, s2, t.Token("Name"));
 			var t3 = new Transition<Login2>(s1, s3, t.Token("Password"));
 			var t4 = new Transition<Login2>(s2, s4, t.Token("Password"));
@@ -185,11 +188,12 @@ namespace Lexxys.States.Tests
 			return statechart;
 		}
 
-		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenScope root)
+		private static Statechart<Login2> CreateStatechartLogin2_TextVerification(ITokenScope? root = null)
 		{
+			root ??= TokenScope.Create("statechart");
 			var token = root.Token("TextVerification");
-			var s = root.WithDomain(token);
-			var t = s.WithTransitionDomain();
+			var s = root.Scope(token);
+			var t = s.TransitionScope();
 
 			var s1 = new State<Login2>(s.Token("Text"));
 			s1.StateEnter += StateAction.Create<Login2>((obj, chart, state, transition) => obj.SendToken());
@@ -203,5 +207,7 @@ namespace Lexxys.States.Tests
 			var statechart = new Statechart<Login2>(token, new[] { s1, s2, s3 }, new[] { t1, t2, t3, t4 });
 			return statechart;
 		}
+
+		#endregion
 	}
 }

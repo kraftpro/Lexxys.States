@@ -40,7 +40,7 @@ namespace Lexxys.States.Con
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(id, name, description);
-			TokenScope = tokenScope.WithDomain(Token);
+			TokenScope = tokenScope.Scope(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
@@ -49,7 +49,7 @@ namespace Lexxys.States.Con
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(name, description);
-			TokenScope = tokenScope.WithDomain(Token);
+			TokenScope = tokenScope.Scope(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
@@ -58,7 +58,7 @@ namespace Lexxys.States.Con
 		{
 			_states = new Dictionary<Token, StateBuilder>();
 			Token = tokenScope.Token(value, description);
-			TokenScope = tokenScope.WithDomain(Token);
+			TokenScope = tokenScope.Scope(Token);
 			Parent = parent ?? new StateBuilder(this, Token.Empty);
 			States = ReadOnly.Wrap(_states);
 		}
@@ -199,7 +199,7 @@ namespace Lexxys.States.Con
 				Subcharts = ReadOnly.Wrap(_subcharts);
 				_roles = new List<string>();
 				Roles = ReadOnly.Wrap(_roles);
-				TokenScope = chart.TokenScope.WithDomain(token);
+				TokenScope = chart.TokenScope.Scope(token);
 			}
 
 			public ITokenScope TokenScope { get; }
