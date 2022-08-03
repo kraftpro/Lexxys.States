@@ -18,16 +18,17 @@ public static class TokenScope
 
 	public static ITokenScope Scope(Token? token)
 	{
-		#pragma warning disable CA1062 // Validate arguments of public methods
-		if (token.IsEmpty())
+		if (token == null || token.IsEmpty)
 			return Default;
 
-		Token root = token!;
-		while (!root.Domain.IsEmpty())
+		Token root = token;
+		while (!root.Domain.IsEmpty)
 			root = root.Domain;
 
-		var scope = __tokenScopes.Values.First(o => o.Contains(root));
-		return scope.Scope(token!);
+		var scope = __tokenScopes.Values.FirstOrDefault(o => o.Contains(root));
+		if (scope == null)
+			throw new ArgumentOutOfRangeException(nameof(token), token, null);
+		return scope.Scope(token);
 	}
 
 	public static IEnumerable<KeyValuePair<string, ITokenScope>> Enumerate() => Enumerable.AsEnumerable(__tokenScopes);

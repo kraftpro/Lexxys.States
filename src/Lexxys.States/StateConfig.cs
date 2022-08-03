@@ -68,6 +68,8 @@ public class StateConfig
 
 	internal static (int? Id, string Name) FixName(int? id, string name)
 	{
+#pragma warning disable CA1307 // Specify StringComparison for clarity
+#pragma warning disable CA1846 // Prefer 'AsSpan' over 'Substring'
 		if (name == null)
 			throw new ArgumentNullException(nameof(name));
 
@@ -90,6 +92,8 @@ public class StateConfig
 					name = name.Substring(0, i).Trim();
 				}
 			}
+#pragma warning restore CA1846 // Prefer 'AsSpan' over 'Substring'
+#pragma warning restore CA1307 // Specify StringComparison for clarity
 		}
 		return (id, name);
 	}
@@ -135,10 +139,14 @@ public class StateConfig
 		=> value == null ? "null" : Strings.EscapeCsString(value);
 
 	internal static string P(string? value, string objName)
+#pragma warning disable CA1307 // Specify StringComparison for clarity
 		=> String.IsNullOrEmpty(value) ? "null" : $"StateCondition.Create<{objName}>((obj, chart, state, transition) => " + (value.Contains('\n') ? "{ " + value + " }" : value!.StartsWith("return ", StringComparison.Ordinal) ? value.Substring(7).TrimEnd(';'): value.TrimEnd(';')) + ")";
+#pragma warning restore CA1307 // Specify StringComparison for clarity
 
 	internal static string A(string? value, string objName)
+#pragma warning disable CA1307 // Specify StringComparison for clarity
 		=> String.IsNullOrEmpty(value) ? "null" : $"StateAction.Create<{objName}>((obj, chart, state, transition) => " + (value.Contains('\n') ? "{ " + value + " }" : value!.TrimEnd(';')) + ")";
+#pragma warning restore CA1307 // Specify StringComparison for clarity
 
 	internal static string RR(IReadOnlyCollection<string>? roles)
 		=> roles?.Count > 0 ? "new[] { " + String.Join(", ", roles.Select(o => S(o))) + " }" : "null";

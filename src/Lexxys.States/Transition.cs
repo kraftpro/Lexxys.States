@@ -45,7 +45,7 @@ public class Transition<T>
 			.Append(") -> (")
 			.Append(Destination.Token.ToString(false)).Append(')');
 
-		if (!Event.IsEmpty())
+		if (!Event.IsEmpty)
 			text.Append(" /").Append(Event.ToString(false));
 
 		if (Guard != null)

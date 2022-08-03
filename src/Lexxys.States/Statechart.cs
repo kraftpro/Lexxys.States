@@ -20,7 +20,7 @@ public class Statechart<T>
 	{
 		if (token == null)
 			throw new ArgumentNullException(nameof(token));
-		if (token.IsEmpty())
+		if (token.IsEmpty)
 			throw new ArgumentOutOfRangeException(nameof(token), token, null);
 		if (states == null)
 			throw new ArgumentNullException(nameof(states));
@@ -215,7 +215,7 @@ public class Statechart<T>
 	/// <param name="token"><see cref="Token"/></param>
 	/// <exception cref="ArgumentOutOfRangeException"></exception>
 	public void SetCurrentState(Token token)
-		=> CurrentState = token.IsEmpty() ? State<T>.Empty: States.FirstOrDefault(o => o.Token == token) ?? throw new ArgumentOutOfRangeException(nameof(token), token, null);
+		=> CurrentState = (token ?? throw new ArgumentNullException(nameof(token))).IsEmpty ? State<T>.Empty: States.FirstOrDefault(o => o.Token == token) ?? throw new ArgumentOutOfRangeException(nameof(token), token, null);
 
 	/// <summary>
 	/// Starts the <see cref="Statechart{T}"/>.
@@ -385,7 +385,7 @@ public class Statechart<T>
 	public IEnumerable<TransitionEvent<T>> GetActiveEvents(T value, IPrincipal? principal = null)
 		=> GetActiveStates()
 			.SelectMany(o => o.Chart.GetStateTransitions(o.State)
-				.Where(t => (o.State.IsFinished || !t.Event.IsEmpty()) && t.CanMoveAlong(value, this, principal))
+				.Where(t => (o.State.IsFinished || !t.Event.IsEmpty) && t.CanMoveAlong(value, this, principal))
 				.Select(t => new TransitionEvent<T>(o.Chart, t)));
 
 	public async IAsyncEnumerable<TransitionEvent<T>> GetActiveEventsAsync(T value, IPrincipal? principal = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
@@ -396,7 +396,7 @@ public class Statechart<T>
 			{
 				if (cancellation.IsCancellationRequested)
 					yield break;
-				if ((item.State.IsFinished || !transition.Event.IsEmpty()) && await transition.CanMoveAlongAsync(value, this, principal).ConfigureAwait(false))
+				if ((item.State.IsFinished || !transition.Event.IsEmpty) && await transition.CanMoveAlongAsync(value, this, principal).ConfigureAwait(false))
 					yield return new TransitionEvent<T>(item.Chart, transition);
 			}
 		}
@@ -448,7 +448,7 @@ public class Statechart<T>
 			return null;
 
 		Transition<T>? transition = null;
-		foreach (var item in all.Where(o => o.Event.IsEmpty() && o.CanMoveAlong(context, this, principal)))
+		foreach (var item in all.Where(o => o.Event.IsEmpty && o.CanMoveAlong(context, this, principal)))
 		{
 			if (transition == null)
 				transition = item;
@@ -579,7 +579,7 @@ public class Statechart<T>
 		Transition<T>? transition = null;
 		foreach (var item in all)
 		{
-			if (item.Event.IsEmpty() && await item.CanMoveAlongAsync(context, this, principal).ConfigureAwait(false))
+			if (item.Event.IsEmpty && await item.CanMoveAlongAsync(context, this, principal).ConfigureAwait(false))
 			{
 				if (transition == null)
 					transition = item;

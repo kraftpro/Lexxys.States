@@ -14,7 +14,6 @@ namespace Lexxys;
 public class Token
 {
 	public static readonly Token Empty = new Token();
-	public const int MinDynamicIndex = 1_000_000_000;
 
 	public int Id { get; }
 	public string Name { get; }
@@ -36,6 +35,8 @@ public class Token
 	/// <param name="domain">Parent Token</param>
 	private Token(int id, string name, string? description, Token domain)
 	{
+		if (id == 0)
+			throw new ArgumentOutOfRangeException(nameof(id), id, null);
 		if (name is null)
 			throw new ArgumentNullException(nameof(name));
 		if (domain is null)
@@ -46,6 +47,8 @@ public class Token
 		Description = description;
 		Domain = domain;
 	}
+
+	public bool IsEmpty => Id == 0;
 
 	/// <summary>
 	/// Determines if the current token is a domain for the specified <paramref name="token"/>.
@@ -66,7 +69,7 @@ public class Token
 		{
 			list.Add(token);
 			token = token.Domain;
-		} while (!token.IsEmpty());
+		} while (!token.IsEmpty);
 		list.Reverse();
 		return list;
 	}
@@ -85,10 +88,7 @@ public class Token
 			return "(empty)";
 		var text = new StringBuilder();
 		if (Id != 0)
-			if (Id > MinDynamicIndex)
-				text.Append('~').Append(Id - MinDynamicIndex).Append('.');
-			else
-				text.Append(Id).Append('.');
+			text.Append(Id).Append('.');
 		text.Append(Name);
 		if (includeDescription && Description != null)
 			text.Append(" - ").Append(Description);
@@ -108,7 +108,7 @@ public class Token
 	class TokenScope: ITokenScope
 	{
 		private readonly ConcurrentDictionary<Token, TokenCollection> _tokens;
-		private volatile int _index = MinDynamicIndex;
+		private volatile int _index;
 
 		public TokenScope()
 		{
@@ -118,22 +118,23 @@ public class Token
 		public Token Domain => Empty;
 
 		public ITokenScope Scope(Token domain) =>
-			domain.IsEmpty() ?
+			domain == null ?
+				throw new ArgumentNullException(nameof(domain)):
+			domain.IsEmpty ?
 				this:
 			Contains(domain) ?
 				new ScopedTokenScope(this, domain):
 				throw new ArgumentOutOfRangeException(nameof(domain), domain, null);
 
-		public Token Token(int id, string? name, string? description = null) => CreateToken(id, name, description, Domain);
+		public Token Token(int id, string? name = null, string? description = null) => CreateToken(id, name, description, Domain);
 
 		public Token Token(string name, string? description = null) => CreateToken(name, description, Domain);
 
-		private bool Contains(Token token) =>
-			token.Domain.IsEmpty() ? _tokens.TryGetValue(token.Domain, out var tokens) && Array.IndexOf(tokens.Items, token) >= 0: _tokens.ContainsKey(token.Domain);
+		private bool Contains(Token token) => _tokens.TryGetValue(token.Domain, out var tokens) && tokens.Contains(token);
 
 		private Token CreateToken(int id, string? name, string? description, Token domain)
 		{
-			if (id >= MinDynamicIndex)
+			if (id <= 0)
 				throw new ArgumentOutOfRangeException(nameof(id), id, null);
 			if (name != null && (name = name.Trim()).Length == 0)
 				name = null;
@@ -149,7 +150,7 @@ public class Token
 				throw new ArgumentNullException(nameof(name));
 			return CreateToken(
 				o => String.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase),
-				() => new Token(Interlocked.Increment(ref _index), name, description, domain),
+				() => new Token(Interlocked.Decrement(ref _index), name, description, domain),
 				domain);
 		}
 
@@ -162,22 +163,24 @@ public class Token
 			#pragma warning restore CA1508 // Avoid dead conditional code
 		}
 
-		public IEnumerator<Token> GetEnumerator() => _tokens[Domain].GetEnumerator();
+		public IEnumerator<Token> GetEnumerator() => _tokens.TryGetValue(Domain, out var items) ? items.GetEnumerator(): Enumerable.Empty<Token>().GetEnumerator();
 
-		IEnumerator IEnumerable.GetEnumerator() => _tokens[Domain].GetEnumerator();
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 		class TokenCollection: IEnumerable<Token>
 		{
-			volatile public Token[] Items;
+			volatile private Token[] _items;
 
-			public TokenCollection(Token[] items) => Items = items;
+			public TokenCollection(Token[] items) => _items = items;
 
-			public Token GetOrAdd(Func<Token, bool> predicate, Func<Token> constructor) 
+            public bool Contains(Token token) => Array.IndexOf(_items, token) >= 0;
+
+            public Token GetOrAdd(Func<Token, bool> predicate, Func<Token> constructor) 
 			{
 				Token? value = null;
 				for (;;)
 				{
-					var items = Items;
+					var items = _items;
 					var t = items.FirstOrDefault(predicate);
 					if (t != null)
 						return t;
@@ -185,14 +188,14 @@ public class Token
 					Array.Copy(items, tmp, items.Length);
 					value ??= constructor();
 					tmp[items.Length] = value;
-					if (Interlocked.CompareExchange(ref Items, tmp, items) == items)
+					if (Interlocked.CompareExchange(ref _items, tmp, items) == items)
 						return value;
 				}
 			}
 
-			public IEnumerator<Token> GetEnumerator() => ((IEnumerable<Token>)Items).GetEnumerator();
+			public IEnumerator<Token> GetEnumerator() => ((IEnumerable<Token>)_items).GetEnumerator();
 
-			IEnumerator IEnumerable.GetEnumerator() => Items.GetEnumerator();
+			IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 		}
 
 		class ScopedTokenScope: ITokenScope, IEquatable<ScopedTokenScope>
@@ -220,7 +223,7 @@ public class Token
 
 			IEnumerator IEnumerable.GetEnumerator() => _scope._tokens[Domain].GetEnumerator();
 
-			public override bool Equals(object? obj) => obj is ScopedTokenScope scope ? Equals(scope): false;
+			public override bool Equals(object? obj) => obj is ScopedTokenScope scope && Equals(scope);
 
 			public bool Equals(ScopedTokenScope? other) => other is not null && _scope == other._scope && Domain == other.Domain;
 
