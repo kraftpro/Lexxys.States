@@ -11,7 +11,7 @@ namespace Lexxys;
 /// <summary>
 /// Represents a token in the hierarchical structure.
 /// </summary>
-public class Token
+public sealed class Token
 {
 	public static readonly Token Empty = new Token();
 
@@ -55,7 +55,7 @@ public class Token
 	/// </summary>
 	/// <param name="token"></param>
 	/// <returns></returns>
-	public bool Contains(Token token) => token != null && (token.Domain == this || (token.Domain != Empty && Contains(token.Domain)));
+	public bool Contains(Token? token) => token != null && (token.Domain == this || (token.Domain != Empty && Contains(token.Domain)));
 
 	/// <summary>
 	/// Returns this token with all domains this token belongs to.
