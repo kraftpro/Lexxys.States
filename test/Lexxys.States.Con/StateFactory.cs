@@ -25,8 +25,10 @@ namespace Lexxys.States.Con
 				new State<Entity>(t.Token("Three")),
 				new State<Entity>(t.Token("Three.One")),
 			};
+			var transitions = new [] { new Transition<Entity>(State<Entity>.Empty, states[0]) };
 
-			return new Statechart<Entity>(TokenScope.Default.Token("Entity-Chart"), Array.Empty<State<Entity>>(), Array.Empty<Transition<Entity>>());
+
+			return new Statechart<Entity>(TokenScope.Default.Token("Entity-Chart"), states, transitions);
 		}
 	}
 }

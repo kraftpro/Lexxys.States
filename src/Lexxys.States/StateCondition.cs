@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 
 namespace Lexxys.States;
 
@@ -224,8 +225,8 @@ public static class StateCondition
 
 	private class RoslynCondition<T>: IStateCondition<T>
 	{
-		private static ILogging Log => __log ??= StaticServices.GetLogger<RoslynCondition<T>>();
-		private static ILogging? __log;
+		private static ILogger Log => __log ??= Statics.GetLogger<RoslynCondition<T>>();
+		private static ILogger? __log;
 
 		private readonly string _expression;
 		private Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? _predicate;

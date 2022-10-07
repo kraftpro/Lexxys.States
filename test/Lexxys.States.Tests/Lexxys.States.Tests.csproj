@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Sample\ConsoleLogger.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="sample-1.config.txt" />
   </ItemGroup>
 
@@ -31,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Lexxys\src\Lexxis.Logging\Lexxys.Logging.csproj" />
     <ProjectReference Include="..\..\..\Lexxys\src\Lexxys\Lexxys.csproj" />
     <ProjectReference Include="..\..\src\Lexxys.States\Lexxys.States.csproj" />
   </ItemGroup>

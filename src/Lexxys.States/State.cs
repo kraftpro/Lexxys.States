@@ -5,12 +5,14 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 namespace Lexxys.States;
 
 public class State<T>
 {
-	private static ILogging Log => __log ??= StaticServices.Create<ILogging<State<T>>>();
-	private static ILogging? __log;
+	private static ILogger Log => __log ??= Statics.GetLogger<State<T>>();
+	private static ILogger? __log;
 
 	/// <summary>
 	/// Represents an empty state.

@@ -4,8 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Lexxys.Configuration;
+using Lexxys.Logging;
 using Lexxys.Xml;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.States.Tests
@@ -18,10 +21,14 @@ namespace Lexxys.States.Tests
 
 		static SampteTests()
 		{
-			StaticServices.AddLoggingStab();
-			StaticServices.ConfigService().AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
+			Statics.Register(o => o
+				.AddConfigService()
+				.AddLoggingService(o => o.AddConsole()));
 
-			var configs = Config.Current.GetCollection<StatechartConfig>("statecharts.statechart").Value;
+			Config.AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
+
+			var configs = Config.GetCollection<StatechartConfig>("statecharts.statechart").Value;
+			Assert.IsNotNull(configs);
 			Assert.IsTrue(configs.Count > 0);
 			var sample = configs.FirstOrDefault(o => o.Name == "sample-1");
 			Assert.IsNotNull(sample);

@@ -9,7 +9,8 @@ namespace Lexxys.States.Tests.Sample;
 
 internal class ChartFactory
 {
-	private static readonly IValue<IReadOnlyList<StatechartConfig>> Configuration = GetConfig();
+	private static IValue<IReadOnlyList<StatechartConfig>> Configuration => __config ??= GetConfig();
+	private static IValue<IReadOnlyList<StatechartConfig>>? __config;
 
 	static IValue<IReadOnlyList<StatechartConfig>> GetConfig()
 	{

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 
 namespace Lexxys.States;
 
@@ -99,8 +100,8 @@ public static class StateAction
 
 	private class RoslynAction<T>: IStateAction<T>
 	{
-		private static ILogging Log => __log ??= StaticServices.GetLogger<RoslynAction<T>>();
-		private static ILogging? __log;
+		private static ILogger Log => __log ??= Statics.GetLogger<RoslynAction<T>>();
+		private static ILogger? __log;
 
 		private readonly string _expression;
 		private Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? _asyncHandler;

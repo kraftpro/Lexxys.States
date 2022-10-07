@@ -13,20 +13,10 @@ namespace Lexxys.States.Con
 	{
 		static void Main(string[] args)
 		{
-			Console.WriteLine("Hello World!");
+			//Console.WriteLine("Hello World!");
 			FactoryTest();
 
-			LogRecordsService.RegisterFactory();
-
-			var log = StaticServices.Create<ILogger>();
-			var logT = StaticServices.Create<ILogger<Program>>();
-			var config = StaticServices.Create<Configuration.IConfigSection>();
-
 			StateUsage.TestConsole();
-
-			FormattableString s = $"args.Count = {args.Length}";
-			Write(s);
-			Console.WriteLine($"args.Count = {args.Length}");
 		}
 
 		private static Dictionary<string, object> __d = new Dictionary<string, object>();
@@ -51,11 +41,6 @@ namespace Lexxys.States.Con
 				result = success ? (T)temp! : default;
 				return success;
 			}
-		}
-
-		public static void TestNullable()
-		{
-
 		}
 
 		private static void FactoryTest()

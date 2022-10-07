@@ -117,11 +117,12 @@ namespace Lexxys.States.Tests
 		public void CanGenerateLambda()
 		{
 			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
-			var lambda = config.GenerateLambda<Login2>();
-			Assert.IsNotNull(lambda);
+			var constructor = config.GenerateLambda<Login2>();
+			Assert.IsNotNull(constructor);
 
-			var statechart = lambda(null);
+			var statechart = constructor(null);
 			Assert.IsNotNull(statechart);
+			Assert.AreEqual(typeof(Statechart<Login2>), statechart.GetType());
 		}
 
 		#region Generated code

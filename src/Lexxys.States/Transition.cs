@@ -5,12 +5,14 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 namespace Lexxys.States;
 
 public class Transition<T>
 {
-	private static ILogging Log => __log ??= StaticServices.Create<ILogging<Transition<T>>>();
-	private static ILogging? __log;
+	private static ILogger Log => __log ??= Statics.GetLogger<Transition<T>>();
+	private static ILogger? __log;
 
 	public Token Event { get; }
 	public IStateCondition<T>? Guard { get; }

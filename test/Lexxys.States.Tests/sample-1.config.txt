@@ -106,6 +106,30 @@ statecharts
 
     - Completed 99
 
+  statechart login
+    :initialState Start
+
+    - Start 1
+      - EnterName => NameEntered
+      - EnterPawweord => PwrdEntered
+
+    - NameEntered 2
+      - EnterPassword => CredsEntered
+      - ClearName => Start
+
+    - PwrdEntered 3
+      - EnterName => CredsEntered
+      - ClearPassword => Start
+
+    - CredsEntered 4
+      - ClearName => PwrdEntered
+      - ClearPassword => NameEntered
+      - Submit => Match
+        # :guard System.DateTime.Now.Second % 2 == 0
+      - Submit => Start
+
+    - Done
+
   statechart .document-upload
     - Waiting 1
       - Upload => Uploaded

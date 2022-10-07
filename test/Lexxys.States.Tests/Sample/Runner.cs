@@ -13,8 +13,7 @@ namespace Lexxys.States.Tests.Sample
 
 		public static async Task Go(string[] args)
 		{
-			StaticServices.AddFactory(ConsoleLoggerFactory.Instance);
-			StaticServices.ConfigService().AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
+			Config.AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
 
 			bool sync = args.Any(o => o == "sync");
 			bool compile = args.Any(o => o == "compile");

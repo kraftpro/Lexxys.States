@@ -1,6 +1,9 @@
 using System.Linq;
 using System.Threading.Tasks;
 
+using Lexxys.Logging;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Lexxys.States.Tests
@@ -9,9 +12,11 @@ namespace Lexxys.States.Tests
 	public class StatechartTest
 	{
 
-		public StatechartTest()
+		static StatechartTest()
 		{
-			StaticServices.AddLoggingStab();
+			Statics.Register(o => o
+				.AddConfigService()
+				.AddLoggingService());
 		}
 
 		[TestMethod]

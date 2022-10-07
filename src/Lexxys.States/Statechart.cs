@@ -6,12 +6,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 namespace Lexxys.States;
 
 public class Statechart<T>
 {
-	private static ILogging Log => __log ??= StaticServices.Create<ILogging<Statechart<T>>>();
-	private static ILogging? __log;
+	private static ILogger Log => __log ??= Statics.GetLogger<Statechart<T>>();
+	private static ILogger? __log;
 
 	private readonly IReadOnlyDictionary<State<T>, IReadOnlyList<Transition<T>>> _transitions;
 	private State<T> _currentState;
