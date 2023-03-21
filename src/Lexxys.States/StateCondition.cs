@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
 
@@ -14,14 +9,12 @@ namespace Lexxys.States;
 
 public static class StateCondition
 {
-	delegate bool StateDelegate<T>(T value, Statechart<T> chart, State<T>? state, Transition<T>? transition);
-
 	public static bool Invoke<T>(this IStateCondition<T> condition, T value, Statechart<T> statechart, State<T>? state, Transition<T>? transition)
 		=> (condition ?? throw new ArgumentNullException(nameof(condition))).GetDelegate().Invoke(value, statechart, state, transition);
 	public static Task<bool> InvokeAsync<T>(this IStateCondition<T> condition, T value, Statechart<T> statechart, State<T>? state, Transition<T>? transition)
 		=> (condition ?? throw new ArgumentNullException(nameof(condition))).GetAsyncDelegate().Invoke(value, statechart, state, transition);
 
-	public static IStateCondition<T> Subcharts<T>(Func<IReadOnlyCollection<Statechart<T>>, bool> condition) => Create<T>((o, c, s, t) => condition(s!.Charts));
+	public static IStateCondition<T> Subcharts<T>(Func<IReadOnlyCollection<Statechart<T>>, bool> condition) => Create<T>((_,_,s, _) => condition(s!.Charts));
 
 	public static IStateCondition<T> True<T>() => TrueCondition<T>.Instance;
 	public static IStateCondition<T> False<T>() => FalseCondition<T>.Instance;
@@ -34,44 +27,44 @@ public static class StateCondition
 
 	public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
 		return new DelegateCondition<T>(expression, asyncExpression);
 	}
 
 	public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
 		return new DelegateCondition<T>(null, asyncExpression);
 	}
 
 	public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, bool>? expression, Func<T, Statechart<T>, Task<bool>>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
-		return new DelegateCondition<T>(expression == null ? null: (o,c,s,t) => expression(o,c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
+		return new DelegateCondition<T>(expression is null ? null: (o, c, _,_) => expression(o,c), asyncExpression is null ? null: (o, c, _,_) => asyncExpression(o, c));
 	}
 
 	public static IStateCondition<T> Create<T>(Func<T, Statechart<T>, Task<bool>> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
-		return new DelegateCondition<T>(null, (o, c, s, t) => asyncExpression(o, c));
+		return new DelegateCondition<T>(null, (o, c, _,_) => asyncExpression(o, c));
 	}
 
 	public static IStateCondition<T> Create<T>(Func<T, bool>? expression, Func<T, Task<bool>>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
-		return new DelegateCondition<T>(expression == null ? null: (o, c, s, t) => expression(o), asyncExpression == null ? null: (o, c, s, t) => asyncExpression(o));
+		return new DelegateCondition<T>(expression is null ? null: (o, _,_,_) => expression(o), asyncExpression is null ? null: (o, _,_,_) => asyncExpression(o));
 	}
 
 	public static IStateCondition<T> Create<T>(Func<T, Task<bool>> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
-		return new DelegateCondition<T>(null, (o, c, s, t) => asyncExpression(o));
+		return new DelegateCondition<T>(null, (o, _,_,_) => asyncExpression(o));
 	}
 
 	public static IStateCondition<T> CSharpScript<T>(string expression) => RoslynCondition<T>.Create(expression);
@@ -98,7 +91,7 @@ public static class StateCondition
 
 		public static IStateCondition<T> Create(IStateCondition<T> condition)
 		{
-			if (condition == null)
+			if (condition is null)
 				throw new ArgumentNullException(nameof(condition));
 			return IsFalse(condition) ? True<T>() : IsTrue(condition) ? False<T>() : new NotCondition<T>(condition);
 		}
@@ -124,9 +117,9 @@ public static class StateCondition
 
 		public static IStateCondition<T> Create(IStateCondition<T> left, IStateCondition<T> right)
 		{
-			if (left == null)
+			if (left is null)
 				throw new ArgumentNullException(nameof(left));
-			if (right == null)
+			if (right is null)
 				throw new ArgumentNullException(nameof(right));
 			return
 				IsTrue(left) || IsTrue(right) ? True<T>() :
@@ -175,10 +168,10 @@ public static class StateCondition
 		}
 
 		public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> GetAsyncDelegate()
-			=> (o, c, s, t) => Task.FromResult(false);
+			=> (_,_,_,_) => Task.FromResult(false);
 
 		public Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> GetDelegate()
-			=> (o, c, s, t) => false;
+			=> (_,_,_,_) => false;
 
 		public override string ToString() => "false";
 	}
@@ -192,10 +185,10 @@ public static class StateCondition
 		}
 
 		public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>> GetAsyncDelegate()
-			=> (o, c, s, t) => Task.FromResult(true);
+			=> (_,_,_,_) => Task.FromResult(true);
 
 		public Func<T, Statechart<T>, State<T>?, Transition<T>?, bool> GetDelegate()
-			=> (o, c, s, t) => true;
+			=> (_,_,_,_) => true;
 
 		public override string ToString() => "true";
 	}
@@ -207,7 +200,7 @@ public static class StateCondition
 
 		public DelegateCondition(Func<T, Statechart<T>, State<T>?, Transition<T>?, bool>? syncCondition, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task<bool>>? asyncCondition = null)
 		{
-			if (syncCondition == null && asyncCondition == null)
+			if (syncCondition is null && asyncCondition is null)
 				throw new ArgumentNullException(nameof(syncCondition));
 			_syncCondition = syncCondition ?? ((o, c,  s, t) => asyncCondition!(o, c, s, t).ConfigureAwait(false).GetAwaiter().GetResult());
 			_asyncCondition = asyncCondition ?? ((o, c, s, t) => Task.Run(() => syncCondition!(o, c, s, t)));
@@ -240,7 +233,7 @@ public static class StateCondition
 		public static IStateCondition<T> Create(string expression)
 		{
 			var exp = expression.TrimToNull();
-			if (exp == null)
+			if (exp is null)
 				throw new ArgumentNullException(nameof(expression));
 			return __compiledConditions.GetOrAdd(exp, CreateRoslyn);
 
@@ -267,40 +260,23 @@ public static class StateCondition
 
 		private void Compile()
 		{
-			if (_asyncPredicate != null)
+			if (_asyncPredicate is not null)
 				return;
 			#pragma warning disable CA2002 // Safe for private class
 			lock (this)
 			#pragma warning restore CA2002
 			{
-				if (_asyncPredicate != null)
+				if (_asyncPredicate is not null)
 					return;
 				if (Log.IsEnabled(LogType.Trace))
 					Log.Trace($"Compile '{_expression}'");
 
-				var references = new List<MetadataReference>
-				{
-					MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-					MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
-					MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
-				};
-#if NETSTANDARD
-				var location = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-				var netstandard = Path.Combine(location, "netstandard.dll");
-				if (File.Exists(netstandard))
-					references.Add(MetadataReference.CreateFromFile(netstandard));
-#endif
-				var entry = Assembly.GetEntryAssembly();
-				if (entry != null)
-					references.AddRange(
-						entry.GetReferencedAssemblies()
-							.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
-						);
-
 				var runner = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create<bool>(_expression,
 					ScriptOptions.Default
-						.WithReferences(references),
+						.AddReferences(RoslynHelper.GetReferences<T>())
+						.AddImports(RoslynHelper.GetImports()),
 					typeof(StateActionGlobals<T>)).CreateDelegate();
+
 				_asyncPredicate = (o, c, s, t) =>
 				{
 					if (Log.IsEnabled(LogType.Trace))

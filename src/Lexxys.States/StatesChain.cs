@@ -20,12 +20,12 @@ public class StatesChain<T>: IReadOnlyList<StatesChainItem<T>>
 
 	internal void Add(StatesChainItem<T> item)
 	{
-		if (item.Parent != null && !_items.Contains(item.Parent))
+		if (item.Parent is not null && !_items.Contains(item.Parent))
 			throw new ArgumentException("Provided tree item is not compatible with the tree.");
 		_items.Add(item);
 	}
 
-	public IEnumerable<StatesChainItem<T>> GetLeafs() => _items.Where(o => !_items.Any(p => p.Parent == o));
+	public IEnumerable<StatesChainItem<T>> GetLeaves() => _items.Where(o => !_items.Any(p => p.Parent == o));
 
 	public IEnumerator<StatesChainItem<T>> GetEnumerator() => _items.GetEnumerator();
 
@@ -47,7 +47,7 @@ public record StatesChainItem<T>(StatesChainItem<T>? Parent, Statechart<T> Chart
 				text.Append(item.Chart.Name).Append(':');
 			text.Append(item.State.Name);
 			item = item.Parent;
-		} while (item != null);
+		} while (item is not null);
 		return text.ToString();
 	}
 }

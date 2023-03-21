@@ -111,24 +111,36 @@ statecharts
 
     - Start 1
       - EnterName => NameEntered
-      - EnterPawweord => PwrdEntered
+        :action         Console.Write("n: "); obj.Value1 = Console.ReadLine();
+      - EnterPassword => PwdEntered
+        :action         Console.Write("p: "); obj.Value2 = Console.ReadLine();
 
     - NameEntered 2
-      - EnterPassword => CredsEntered
+      - EnterPassword => CrdEntered
+        :action         Console.Write("p: "); obj.Value2 = Console.ReadLine();
       - ClearName => Start
+        :action         obj.Value1 = null;
 
-    - PwrdEntered 3
-      - EnterName => CredsEntered
+    - PwdEntered 3
+      - EnterName => CrdEntered
+        :action         Console.Write("n: "); obj.Value1 = Console.ReadLine();
       - ClearPassword => Start
+        :action         obj.Value2 = null;
 
-    - CredsEntered 4
-      - ClearName => PwrdEntered
+    - CrdEntered 4
+      - ClearName => PwdEntered
+        :action         obj.Value1 = null;
       - ClearPassword => NameEntered
-      - Submit => Match
-        # :guard System.DateTime.Now.Second % 2 == 0
-      - Submit => Start
-
+        :action         obj.Value2 = null;
+      - Submit => Done
+      - Reset => Start
+            
     - Done
+        :guard (obj.Value1 ?? "").Length > 0 && obj.Value1 != obj.Value2 && (obj.Value2 ?? "").Length > 4
+        :stateEntered <<
+            Console.Write("name: "); Console.WriteLine(obj.Value1);
+            Console.Write("password: "); Console.WriteLine(obj.Value2);
+            >>
 
   statechart .document-upload
     - Waiting 1

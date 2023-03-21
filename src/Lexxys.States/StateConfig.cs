@@ -6,22 +6,33 @@ using System.Text;
 
 namespace Lexxys.States;
 
+#pragma warning disable CA1819
+#pragma warning disable CA1307 // Specify StringComparison for clarity
+
 public class StateConfig
 {
-	public int? Id { get; }
-	public string Name { get; }
-	public string? Description { get; }
-	public string? Guard { get; }
-	public string? StateEnter { get; }
-	public string? StatePassthrough { get; }
-	public string? StateEntered { get; }
-	public string? StateExit { get; }
-	public IReadOnlyCollection<string>? Roles { get; }
-	public IReadOnlyCollection<StatechartConfig>? Charts { get; }
+	public int? Id { get; init; }
+	public string Name { get; init; }
+	public string? Description { get; init; }
+	public string? Guard { get; init; }
+	public string? StateEnter { get; init; }
+	public string? StatePassthrough { get; init; }
+	public string? StateEntered { get; init; }
+	public string? StateExit { get; init; }
+	public string[]? Role { get; init; }
+	public TransitionConfig[] Transition { get; init; }
+	public StatechartConfig[] Statechart { get; init; }
 
-	public StateConfig(string name, int? id, string? description, string? guard, string? stateEnter, string? statePassthrough, string? stateEntered, string? stateExit, IReadOnlyCollection<string>? roles, IReadOnlyCollection<StatechartConfig>? charts)
+	public StateConfig()
 	{
-		if (name == null || (name = name.Trim()).Length == 0)
+		Name = String.Empty;
+		Transition = Array.Empty<TransitionConfig>();
+		Statechart = Array.Empty<StatechartConfig>();
+	}
+
+	public StateConfig(string name, int? id = null, string? description = null, string? guard = null, string? stateEnter = null, string? statePassthrough = null, string? stateEntered = null, string? stateExit = null, IReadOnlyCollection<string>? roles = null, IReadOnlyCollection<StatechartConfig>? statechart = null, IReadOnlyCollection<TransitionConfig>? transition = null)
+	{
+		if (name is null || (name = name.Trim()).Length == 0)
 			throw new ArgumentNullException(nameof(name));
 		(Id, Name) = FixName(id, name);
 		Description = description;
@@ -30,25 +41,39 @@ public class StateConfig
 		StatePassthrough = statePassthrough;
 		StateEntered = stateEntered;
 		StateExit = stateExit;
-		Roles = roles;
-		Charts = charts;
+		Role = roles?.ToArray();
+		Statechart = statechart?.ToArray() ?? Array.Empty<StatechartConfig>();
+		Transition = transition?.ToArray() ?? Array.Empty<TransitionConfig>();
+		foreach (var item in Transition)
+		{
+			item.Source = Name ?? Id.ToString();
+		}
+	}
+
+	public TransitionConfig[] GetTransitions()
+	{
+		foreach (var item in Transition)
+		{
+			item.Source = Name ?? Id.ToString();
+		}
+		return Transition;
 	}
 
 	internal State<T> Create<T>(ITokenScope scope, Func<string, IStateAction<T>?> actionBuilder, Func<string, IStateCondition<T>?> conditionBuilder, Func<string, StatechartConfig>? referenceResolver)
 	{
-		if (scope == null)
+		if (scope is null)
 			throw new ArgumentNullException(nameof(scope));
-		if (actionBuilder == null)
+		if (actionBuilder is null)
 			throw new ArgumentNullException(nameof(actionBuilder));
-		if (conditionBuilder == null)
+		if (conditionBuilder is null)
 			throw new ArgumentNullException(nameof(conditionBuilder));
 
 		var token = CreateToken(scope, Id, Name, Description);
 		var state = new State<T>(
 			token: token,
 			guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
-			roles: Roles,
-			charts: Charts?.Select(o => o.Create<T>(scope.Scope(token), actionBuilder, conditionBuilder, referenceResolver)).ToList());
+			roles: Role,
+			charts: Statechart.Length == 0 ? null: Statechart.Select(o => o.Create(scope.Scope(token), actionBuilder, conditionBuilder, referenceResolver)).ToList());
 
 		if (!String.IsNullOrEmpty(StateEnter))
 			state.StateEnter += actionBuilder(StateEnter!);
@@ -63,17 +88,16 @@ public class StateConfig
 
 	static Token CreateToken(ITokenScope scope, int? id, string name, string? description)
 	{
-		return id == null ? scope.Token(name, description): scope.Token(id.GetValueOrDefault(), name, description);
+		return id is null ? scope.Token(name, description): scope.Token(id.GetValueOrDefault(), name, description);
 	}
 
 	internal static (int? Id, string Name) FixName(int? id, string name)
 	{
-#pragma warning disable CA1307 // Specify StringComparison for clarity
 #pragma warning disable CA1846 // Prefer 'AsSpan' over 'Substring'
-		if (name == null)
+		if (name is null)
 			throw new ArgumentNullException(nameof(name));
 
-		if (id == null)
+		if (id is null)
 		{
 			int i = name.IndexOf('.');
 			if (i >= 0)
@@ -93,7 +117,6 @@ public class StateConfig
 				}
 			}
 #pragma warning restore CA1846 // Prefer 'AsSpan' over 'Substring'
-#pragma warning restore CA1307 // Specify StringComparison for clarity
 		}
 		return (id, name);
 	}
@@ -101,7 +124,7 @@ public class StateConfig
 	internal void GenerateCode(TextWriter writer, string objName, string varName, string scope, string temp, Dictionary<StatechartConfig, string> chartMethods, string indent)
 	{
 		writer.WriteLine(TrimEnd(
-			$"{indent}var {varName} = new State<{objName}>({T(scope, Id, Name, Description, Charts?.Count > 0 ? temp: null)}, {CC(Charts, chartMethods, $"s.Scope({temp})")}, {P(Guard, objName)}, {RR(Roles)}",
+			$"{indent}var {varName} = new State<{objName}>({T(scope, Id, Name, Description, Statechart.Length > 0 ? temp: null)}, {CC(Statechart, chartMethods, $"s.Scope({temp})")}, {P(Guard, objName)}, {RR(Role)}",
 			", null, null, null") + ");");
 		if (!String.IsNullOrEmpty(StateEnter))
 			writer.WriteLine($"{indent}{varName}.StateEnter += {A(StateEnter, objName)};");
@@ -115,19 +138,19 @@ public class StateConfig
 
 	internal static string T(string scope, int? id, string? name, string? description, string? temp = null)
 	{
-		if (id == null && name == null)
+		if (id is null && name is null)
 			return "null";
 		var text = new StringBuilder();
 		if (!String.IsNullOrEmpty(temp))
 			text.Append(temp).Append(" = ");
 		text.Append(scope).Append('.').Append("Token(");
-		if (id == null)
+		if (id is null)
 			text.Append(S(name));
-		else if (name == null)
+		else if (name is null)
 			text.Append(id);
 		else
 			text.Append(id).Append(", ").Append(S(name));
-		if (description == null)
+		if (description is null)
 			text.Append(')');
 		else
 			text.Append(", ").Append(S(description)).Append(')');
@@ -136,17 +159,26 @@ public class StateConfig
 
 	// TODO: Handle special characters \n \x01 etc.
 	internal static string S(string? value)
-		=> value == null ? "null" : Strings.EscapeCsString(value);
+		=> value is null ? "null" : Strings.EscapeCsString(value);
 
 	internal static string P(string? value, string objName)
-#pragma warning disable CA1307 // Specify StringComparison for clarity
-		=> String.IsNullOrEmpty(value) ? "null" : $"StateCondition.Create<{objName}>((obj, chart, state, transition) => " + (value.Contains('\n') ? "{ " + value + " }" : value!.StartsWith("return ", StringComparison.Ordinal) ? value.Substring(7).TrimEnd(';'): value.TrimEnd(';')) + ")";
-#pragma warning restore CA1307 // Specify StringComparison for clarity
+	{
+		return String.IsNullOrEmpty(value) ? "null": $"StateCondition.Create<{objName}>((obj, chart, state, transition) => {Code(value!)})";
+	}
 
 	internal static string A(string? value, string objName)
-#pragma warning disable CA1307 // Specify StringComparison for clarity
-		=> String.IsNullOrEmpty(value) ? "null" : $"StateAction.Create<{objName}>((obj, chart, state, transition) => " + (value.Contains('\n') ? "{ " + value + " }" : value!.TrimEnd(';')) + ")";
-#pragma warning restore CA1307 // Specify StringComparison for clarity
+	{
+		return String.IsNullOrEmpty(value) ? "null" : $"StateAction.Create<{objName}>((obj, chart, state, transition) => {Code(value!)})";
+	}
+
+	private static string Code(string value) =>
+		!value.StartsWith("{", StringComparison.Ordinal) && (value.Contains('\n') || value.TrimEnd(Semicolons).Contains(';')) ?
+			"{" + value + "}":
+		value.StartsWith("return ", StringComparison.Ordinal) ?
+			value.Substring(7).TrimEnd(Semicolons):
+			value.TrimEnd(Semicolons);
+
+	private static readonly char[] Semicolons = { ';' };
 
 	internal static string RR(IReadOnlyCollection<string>? roles)
 		=> roles?.Count > 0 ? "new[] { " + String.Join(", ", roles.Select(o => S(o))) + " }" : "null";

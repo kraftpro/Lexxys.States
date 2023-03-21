@@ -1,12 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
 
@@ -23,44 +17,44 @@ public static class StateAction
 
 	public static IStateAction<T> Create<T>(Action<T, Statechart<T>, State<T>?, Transition<T>?>? expression, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
 		return new DelegateAction<T>(expression, asyncExpression);
 	}
 
 	public static IStateAction<T> Create<T>(Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
 		return new DelegateAction<T>(null, asyncExpression);
 	}
 
 	public static IStateAction<T> Create<T>(Action<T, Statechart<T>>? expression, Func<T, Statechart<T>, Task>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
-		return new DelegateAction<T>(expression == null ? null: (o,c,s,t) => expression(o, c), asyncExpression == null ? null: (o,c,s,t) => asyncExpression(o, c));
+		return new DelegateAction<T>(expression is null ? null: (o, c, _,_) => expression(o, c), asyncExpression is null ? null: (o, c, _,_) => asyncExpression(o, c));
 	}
 
 	public static IStateAction<T> Create<T>(Func<T, Statechart<T>, Task> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
-		return new DelegateAction<T>(null, (o,c,s,t) => asyncExpression(o, c));
+		return new DelegateAction<T>(null, (o, c, _,_) => asyncExpression(o, c));
 	}
 
 	public static IStateAction<T> Create<T>(Action<T>? expression, Func<T, Task>? asyncExpression = null)
 	{
-		if (expression == null && asyncExpression == null)
+		if (expression is null && asyncExpression is null)
 			throw new ArgumentNullException(nameof(expression));
-		return new DelegateAction<T>(expression == null ? null: (o, c, s, t) => expression(o), asyncExpression == null ? null: (o, c, s, t) => asyncExpression(o));
+		return new DelegateAction<T>(expression is null ? null: (o, _,_,_) => expression(o), asyncExpression is null ? null: (o, _,_,_) => asyncExpression(o));
 	}
 
 	public static IStateAction<T> Create<T>(Func<T, Task> asyncExpression)
 	{
-		if (asyncExpression == null)
+		if (asyncExpression is null)
 			throw new ArgumentNullException(nameof(asyncExpression));
-		return new DelegateAction<T>(null, (o, c, s, t) => asyncExpression(o));
+		return new DelegateAction<T>(null, (o, _,_,_) => asyncExpression(o));
 	}
 
 	public static IStateAction<T> CSharpScript<T>(string expression) => RoslynAction<T>.Create(expression);
@@ -75,9 +69,9 @@ public static class StateAction
 		{
 		}
 
-		public Action<T, Statechart<T>, State<T>?, Transition<T>?> GetDelegate() => (o, c, s, t) => { };
+		public Action<T, Statechart<T>, State<T>?, Transition<T>?> GetDelegate() => (_,_,_,_) => { };
 
-		public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> GetAsyncDelegate() => (o, c, s, t) => Task.CompletedTask;
+		public Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> GetAsyncDelegate() => (_,_,_,_) => Task.CompletedTask;
 	}
 
 	private class DelegateAction<T>: IStateAction<T>
@@ -87,7 +81,7 @@ public static class StateAction
 
 		public DelegateAction(Action<T, Statechart<T>, State<T>?, Transition<T>?>? syncAction, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task>? asyncAction)
 		{
-			if (syncAction == null && asyncAction == null)
+			if (syncAction is null && asyncAction is null)
 				throw new ArgumentNullException(nameof(syncAction));
 			_syncAction = syncAction ?? ((o, c, s, t) => asyncAction!(o, c, s, t).ConfigureAwait(false).GetAwaiter().GetResult());
 			_asyncAction = asyncAction ?? ((o, c, s, t) => { return Task.Run(() => syncAction!.Invoke(o, c, s, t)); });
@@ -109,14 +103,14 @@ public static class StateAction
 
 		public RoslynAction(string expression)
 		{
-			if (expression == null || expression.Length <= 0)
+			if (expression is null || expression.Length <= 0)
 				throw new ArgumentNullException(nameof(expression));
 			_expression = expression;
 		}
 
 		public static IStateAction<T> Create(string? expression)
 		{
-			return (expression = expression.TrimToNull()) == null ? Empty<T>():
+			return (expression = expression.TrimToNull()) is null ? Empty<T>():
 				__compiledActions.GetOrAdd(expression, o => new RoslynAction<T>(o));
 		}
 		private static readonly ConcurrentDictionary<string, IStateAction<T>> __compiledActions = new ConcurrentDictionary<string, IStateAction<T>>();
@@ -135,40 +129,23 @@ public static class StateAction
 
 		private void Compile()
 		{
-			if (_asyncHandler != null)
+			if (_asyncHandler is not null)
 				return;
 			#pragma warning disable CA2002 // Safe for private class
 			lock (this)
 			#pragma warning restore CA2002
 			{
-				if (_asyncHandler != null)
+				if (_asyncHandler is not null)
 					return;
 				if (Log.IsEnabled(LogType.Trace))
 					Log.Trace($"Compile '{_expression}'");
 
-				var references = new List<MetadataReference>
-				{
-					MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-					MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
-					MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
-				};
-#if NETSTANDARD
-				var location = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-				var netstandard = Path.Combine(location, "netstandard.dll");
-				if (File.Exists(netstandard))
-					references.Add(MetadataReference.CreateFromFile(netstandard));
-#endif
-				var entry = Assembly.GetEntryAssembly();
-				if (entry != null)
-					references.AddRange(
-						entry.GetReferencedAssemblies()
-							.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
-						);
-
 				var runner = Microsoft.CodeAnalysis.CSharp.Scripting.CSharpScript.Create<bool>(_expression,
 					ScriptOptions.Default
-						.WithReferences(references),
+						.AddReferences(RoslynHelper.GetReferences<T>())
+						.AddImports(RoslynHelper.GetImports()),
 					typeof(StateActionGlobals<T>)).CreateDelegate();
+
 				_asyncHandler = (o, c, s, t) =>
 				{
 					if (Log.IsEnabled(LogType.Trace))

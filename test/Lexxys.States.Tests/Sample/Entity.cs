@@ -9,6 +9,9 @@ namespace Lexxys.States.Tests.Sample;
 public class Entity
 {
 	public int?[] State { get; }
+	public string? Value1 { get; set; }
+	public string? Value2 { get; set; }
+	public string? Value3 { get; set; }
 
 	public Entity(int width)
 	{

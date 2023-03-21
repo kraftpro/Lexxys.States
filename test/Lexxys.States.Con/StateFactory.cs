@@ -4,31 +4,30 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Lexxys.States.Con
+namespace Lexxys.States.Con;
+
+class StateFactory
 {
-	class StateFactory
-	{
-		public static Statechart<Entity> Create(string name)
-			=> name switch
-			{
-				"one" => CreateStatechart1(),
-				_ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
-			};
-
-		private static Statechart<Entity> CreateStatechart1()
+	public static Statechart<Entity> Create(string name)
+		=> name switch
 		{
-			var t = TokenScope.Default;
-			var states = new State<Entity>[]
-			{
-				new State<Entity>(t.Token("One")),
-				new State<Entity>(t.Token("Two")),
-				new State<Entity>(t.Token("Three")),
-				new State<Entity>(t.Token("Three.One")),
-			};
-			var transitions = new [] { new Transition<Entity>(State<Entity>.Empty, states[0]) };
+			"one" => CreateStatechart1(),
+			_ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
+		};
+
+	private static Statechart<Entity> CreateStatechart1()
+	{
+		var t = TokenScope.Default;
+		var states = new State<Entity>[]
+		{
+			new State<Entity>(t.Token("One")),
+			new State<Entity>(t.Token("Two")),
+			new State<Entity>(t.Token("Three")),
+			new State<Entity>(t.Token("Three.One")),
+		};
+		var transitions = new [] { new Transition<Entity>(State<Entity>.Empty, states[0]) };
 
 
-			return new Statechart<Entity>(TokenScope.Default.Token("Entity-Chart"), states, transitions);
-		}
+		return new Statechart<Entity>(TokenScope.Default.Token("Entity-Chart"), states, transitions);
 	}
 }

@@ -15,16 +15,12 @@ namespace Lexxys.States.Tests
 {
 
 	[TestClass]
-	public class SampteTests
+	public class SampleTests
 	{
-		private static StatechartConfig ChartConfig;
+		private static readonly StatechartConfig ChartConfig;
 
-		static SampteTests()
+		static SampleTests()
 		{
-			Statics.Register(o => o
-				.AddConfigService()
-				.AddLoggingService(o => o.AddConsole()));
-
 			Config.AddConfiguration(new Uri(".\\sample-1.config.txt", UriKind.RelativeOrAbsolute));
 
 			var configs = Config.GetCollection<StatechartConfig>("statecharts.statechart").Value;
@@ -71,12 +67,12 @@ namespace Lexxys.States.Tests
 		}
 
 		[TestMethod]
-		public void D_CanMoveToCompositStateTest()
+		public void D_CanMoveToCompositeStateTest()
 		{
-			Run_CanMoveToCompositState();
+			Run_CanMoveToCompositeState();
 		}
 
-		private (SampleObj, Statechart<SampleObj>) Run_CanMoveToCompositState()
+		private (SampleObj, Statechart<SampleObj>) Run_CanMoveToCompositeState()
 		{
 			var sample = GetSample();
 			var obj = new SampleObj();
@@ -126,7 +122,7 @@ namespace Lexxys.States.Tests
 
 		private (SampleObj, Statechart<SampleObj>) Run_CanStartUpload()
 		{
-			var (obj, sample) = Run_CanMoveToCompositState();
+			var (obj, sample) = Run_CanMoveToCompositeState();
 			var upload = sample.GetActiveEvents(obj).FirstOrDefault(o => o.Chart.Name == "Doc1" && o.Transition.Event.Name == "Upload");
 			Assert.IsNotNull(upload);
 			sample.OnEvent(upload, obj);
@@ -282,7 +278,7 @@ namespace Lexxys.States.Tests
 		public class SampleObj
 		{
 			public string?[] State { get; set; } = new string[3];
-			private static string[] Names = new[] { "sample-1", "Doc1", "Doc2" };
+			private static readonly string[] Names = new[] { "sample-1", "Doc1", "Doc2" };
 
 			public void SetStates(IEnumerable<(string Name, string Value)> states)
 			{

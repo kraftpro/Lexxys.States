@@ -4,12 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Lexxys.States.Con
-{
-	using States;
+namespace Lexxys.States.Con;
 
-	class StatechartBuilderTest
-	{
+using States;
+
+class StatechartBuilderTest
+{
 #if false
 		public static void Go()
 		{
@@ -243,30 +243,29 @@ namespace Lexxys.States.Con
 				;
 		}
 #endif
-		class Expo
+	class Expo
+	{
+		public void Open()
 		{
-			public void Open()
-			{
-				Console.WriteLine("Open");
-			}
-
-			public void Close()
-			{
-				Console.WriteLine("Close");
-			}
+			Console.WriteLine("Open");
 		}
 
-		enum ExpoState
+		public void Close()
 		{
-			NotPlanned,
-			Planned,
-			Openned,
-			Closed,
+			Console.WriteLine("Close");
 		}
+	}
 
-		enum ExpoCommand
-		{
+	enum ExpoState
+	{
+		NotPlanned,
+		Planned,
+		Openned,
+		Closed,
+	}
 
-		}
+	enum ExpoCommand
+	{
+
 	}
 }

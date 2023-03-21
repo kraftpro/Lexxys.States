@@ -8,7 +8,7 @@ static class IPrincipalExtensions
 {
 	public static bool IsInRole(this IPrincipal? principal, IEnumerable<string?>? roles)
 	{
-		if (principal == null || roles == null)
+		if (principal is null || roles is null)
 			return true;
 		var result = true;
 		foreach (var item in roles)

@@ -13,29 +13,35 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 
 namespace Lexxys.States;
-using Xml;
+
+#pragma warning disable CA1819
 
 public class StatechartConfig
 {
-	public int? Id { get; }
-	public string Name { get; }
-	public string? Description { get; }
-	public string? OnLoad { get; }
-	public string? OnUpdate { get; }
-	public string? ChartStart { get; }
-	public string? ChartFinish { get; }
-	public string? StateEnter { get; }
-	public string? StateEntered { get; }
-	public string? StatePassthrough { get; }
-	public string? StateExit { get; }
-	public string? InitialState { get; }
-	public IReadOnlyCollection<StateConfig> States { get; }
-	public IReadOnlyCollection<TransitionConfig> Transitions { get; }
-	public string? Reference { get; }
+	public int? Id { get; init; }
+	public string Name { get; init; }
+	public string? Description { get; init; }
+	public string? OnLoad { get; init; }
+	public string? OnUpdate { get; init; }
+	public string? ChartStart { get; init; }
+	public string? ChartFinish { get; init; }
+	public string? StateEnter { get; init; }
+	public string? StateEntered { get; init; }
+	public string? StatePassthrough { get; init; }
+	public string? StateExit { get; init; }
+	public string? InitialState { get; init; }
+	public StateConfig[] State { get; init; }
+	public string? Reference { get; init; }
 
-	public StatechartConfig(int? id, string name, string? description, string? onLoad, string? onUpdate, string? chartStart, string? chartFinish, string? stateEnter, string? stateEntered, string? statePassthrough, string? stateExit, string? initialState, IReadOnlyCollection<StateConfig>? states, IReadOnlyCollection<TransitionConfig>? transitions, string? reference = null)
+	public StatechartConfig()
 	{
-		if (name == null || (name = name.Trim()).Length == 0)
+		Name = String.Empty;
+		State = Array.Empty<StateConfig>(); // new List<StateConfig>();
+	}
+
+	public StatechartConfig(string name, int? id = null, string? description = null, string? onLoad = null, string? onUpdate = null, string? chartStart = null, string? chartFinish = null, string? stateEnter = null, string? stateEntered = null, string? statePassthrough = null, string? stateExit = null, string? initialState = null, IReadOnlyCollection<StateConfig>? state = null, string? reference = null)
+	{
+		if (name is null || (name = name.Trim()).Length == 0)
 			throw new ArgumentNullException(nameof(name));
 
 		(Id, Name) = FixName(id, name);
@@ -49,21 +55,30 @@ public class StatechartConfig
 		StatePassthrough = statePassthrough;
 		StateExit = stateExit;
 		InitialState = initialState;
-		States = states ?? Array.Empty<StateConfig>();
-		Transitions = transitions ?? Array.Empty<TransitionConfig>();
+		State = state?.ToArray() ?? Array.Empty<StateConfig>();
 
-		ValidateTokens(States);
+		ValidateTokens(State);
 		Reference = reference;
 	}
 
 	private static void ValidateTokens(IReadOnlyCollection<StateConfig> states)
 	{
 		var dupId = states.Where(o => o.Id.HasValue).GroupBy(o => o.Id).FirstOrDefault(o => o.Count() > 1);
-		if (dupId != null)
+		if (dupId is not null)
 			throw new InvalidOperationException($"State ID value is not unique ({dupId.Key})");
-		var dupName = states.Where(o => o.Name != null).GroupBy(o => o.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault(o => o.Count() > 1);
-		if (dupName != null)
+		var dupName = states.Where(o => o.Name is not null).GroupBy(o => o.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault(o => o.Count() > 1);
+		if (dupName is not null)
 			throw new InvalidOperationException($"State Name value is not unique ({dupName.Key})");
+	}
+
+	private List<TransitionConfig> GetTransitions()
+	{
+		var transitions = new List<TransitionConfig>();
+		foreach (var item in State)
+		{
+			transitions.AddRange(item.GetTransitions());
+		}
+		return transitions;
 	}
 
 	public Statechart<T> Create<T>(ITokenScope? scope = null, Func<string, IStateAction<T>?>? actionBuilder = null, Func<string, IStateCondition<T>?>? conditionBuilder = null, Func<string, StatechartConfig>? referenceResolver = null)
@@ -74,15 +89,15 @@ public class StatechartConfig
 		var token = CreateToken(scope, Id, Name, Description);
 		scope = scope.Scope(token);
 
-		var reference = Reference == null ? null:
-			referenceResolver != null ? referenceResolver(Reference):
+		var reference = Reference is null ? null:
+			referenceResolver is not null ? referenceResolver(Reference):
 			throw new ArgumentNullException(nameof(referenceResolver));
 
-		var states = States.Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)).ToList();
+		var states = State.Select(o => o.Create(scope, actionBuilder, conditionBuilder, referenceResolver)).ToList();
 		List<string?> exclude = new List<string?>(states.Select(o => o.Name));
-		if (reference?.States.Count > 0)
-			states.AddRange(reference.States.Where(o => !exclude.Contains(o.Name)).Select(o => o.Create<T>(scope, actionBuilder, conditionBuilder, referenceResolver)));
-		var transitions = WithInitial(states.Select(o => ((int?)o.Id, o.Name)), reference, exclude).Select(o => o.Create<T>(scope, states, actionBuilder, conditionBuilder));
+		if (reference?.State.Length > 0)
+			states.AddRange(reference.State.Where(o => !exclude.Contains(o.Name)).Select(o => o.Create(scope, actionBuilder, conditionBuilder, referenceResolver)));
+		var transitions = WithInitial(states.Select(o => ((int?)o.Id, o.Name)), reference, exclude).Select(o => o.Create(scope, states, actionBuilder, conditionBuilder));
 		var chart = new Statechart<T>(token, states, transitions);
 
 		if (!String.IsNullOrEmpty(OnLoad))
@@ -104,14 +119,15 @@ public class StatechartConfig
 		return chart;
 
 		static Token CreateToken(ITokenScope scope, int? id, string name, string? description)
-			=> id == null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
+			=> id is null ? scope.Token(name, description) : scope.Token(id.GetValueOrDefault(), name, description);
 	}
 
 	private IEnumerable<TransitionConfig> WithInitial(IEnumerable<(int? Id, string Name)> states, StatechartConfig? reference, List<string?> exclude)
 	{
-		List<TransitionConfig> transitions = Transitions.ToList();
-		if (reference?.Transitions.Count > 0)
-			transitions.AddRange(reference.Transitions.Where(o => !exclude.Contains(o.Source)));
+		var transitions = GetTransitions();
+		var refers = reference?.GetTransitions();
+		if (refers?.Count > 0)
+			transitions.AddRange(refers.Where(o => !exclude.Contains(o.Source)));
 
 		string initial;
 		if (!String.IsNullOrEmpty(InitialState))
@@ -140,8 +156,8 @@ public class StatechartConfig
 		if (writer is null)
 			throw new ArgumentNullException(nameof(writer));
 
-		var reference = Reference == null ? null:
-			referenceResolver != null ? referenceResolver(Reference):
+		var reference = Reference is null ? null:
+			referenceResolver is not null ? referenceResolver(Reference):
 			throw new ArgumentNullException(nameof(referenceResolver));
 
 		indent ??= "\t";
@@ -152,11 +168,11 @@ public class StatechartConfig
 
 		var stateNames = new Dictionary<StateConfig, string>();
 		var transitionNames = new Dictionary<TransitionConfig, string>();
-		var states = States.ToList();
+		var states = State.ToList();
 		var exclude = new List<string?>(states.Select(o => o.Name));
-		if (reference?.States.Count > 0)
-			states.AddRange(reference.States.Where(o => !exclude.Contains(o.Name)));
-		var chartMethods = states.SelectMany(o => o.Charts ?? Array.Empty<StatechartConfig>()).ToDictionary(o => o, o => GetMethodName(o.Name, methodName + "_"));
+		if (reference?.State.Length > 0)
+			states.AddRange(reference.State.Where(o => !exclude.Contains(o.Name)));
+		var chartMethods = states.SelectMany(o => o.Statechart).ToDictionary(o => o, o => GetMethodName(o.Name, methodName + "_"));
 
 		writer.WriteLine($"{indent}{visibility} static Statechart<{objName}> {methodName}(ITokenScope{q} root = null)");
 		writer.WriteLine($"{indent}{{");
@@ -166,8 +182,8 @@ public class StatechartConfig
 		writer.WriteLine($"{indent}var token = root.Token({S(Name)});");
 		writer.WriteLine($"{indent}var s = root.Scope(token);");
 		writer.WriteLine($"{indent}var t = s.TransitionScope();");
-		if (states.Any(o => o.Charts?.Count > 0))
-			writer.WriteLine($"{indent}Token tk;");
+		if (states.Any(o => o.Statechart.Length > 0))
+			writer.WriteLine($"{indent}Token x;");
 		writer.WriteLine();
 
 		int index = 0;
@@ -175,7 +191,7 @@ public class StatechartConfig
 		{
 			string name = $"s{++index}";
 			stateNames.Add(state, name);
-			state.GenerateCode(writer, objName, name, "s", "tk", chartMethods, indent);
+			state.GenerateCode(writer, objName, name, "s", "x", chartMethods, indent);
 		}
 
 		index = 0;
@@ -207,22 +223,25 @@ public class StatechartConfig
 		writer.WriteLine($"{indent}return statechart;");
 		writer.WriteLine($"{indent0}}}");
 
-		foreach (var s in States)
+		foreach (var s in State)
 		{
-			if (s.Charts?.Count > 0)
+			foreach (var chart in s.Statechart)
 			{
-				foreach (var chart in s.Charts)
-				{
-					writer.WriteLine();
-					chart.GenerateCode(writer, objName, methodName + "_", "private", indent0, tab, nullable, referenceResolver);
-				}
+				writer.WriteLine();
+				chart.GenerateCode(writer, objName, methodName + "_", "private", indent0, tab, nullable, referenceResolver);
 			}
 		}
 
-		static string AA(IEnumerable<string> values) => values?.Any() == true ? "new[] { " + String.Join(", ", values) + " }": "null";
+		static string AA(IEnumerable<string>? values)
+		{
+			if (values is null)
+				return "null";
+			var s = String.Join(", ", values);
+			return s.Length == 0 ? "null": "new[] { " + s + " }";
+		}
 	}
 
-	private static string GetMethodName(string name, string namePrefix) => namePrefix + Regex.Replace(Strings.ToPascalCase(name), @"[_\W]+", "_");
+	private static string GetMethodName(string name, string namePrefix) => namePrefix + Regex.Replace(Strings.ToPascalCase(name)!, @"[_\W]+", "_");
 
 
 	public Func<ITokenScope?, Statechart<T>> GenerateLambda<T>(string? methodPrefix = null, string? className = null, string? nameSpace = null, IEnumerable<string>? usings = null, Func<string, StatechartConfig>? referenceResolver = null)
@@ -234,16 +253,21 @@ public class StatechartConfig
 			string tab = "  ";
 			string indent = "";
 			writer.WriteLine("#nullable enable");
+			writer.WriteLine("using System;");
+			writer.WriteLine("using System.Collections.Generic;");
+			writer.WriteLine("using System.Linq;");
+			writer.WriteLine("using System.Text;");
 			writer.WriteLine("using Lexxys;");
 			writer.WriteLine("using Lexxys.States;");
 			writer.WriteLine($"using {typeof(T).Namespace};");
-			if (usings != null)
+			if (usings is not null)
 			{
 				foreach (var item in usings)
 				{
 					writer.WriteLine($"using {item};");
 				}
 			}
+			writer.WriteLine();
 			if (!String.IsNullOrEmpty(nameSpace))
 			{
 				writer.WriteLine($"namespace {nameSpace} {{");
@@ -270,29 +294,11 @@ public class StatechartConfig
 		var name = $"sc{FW}-{GetHash(code)}.dll";
 		var filepath = Path.Combine(Path.GetTempPath(), name);
 		var asm = Factory.TryLoadAssembly(filepath, false);
-		if (asm == null)
+		if (asm is null)
 		{
-			var references = new List<MetadataReference>
-			{
-				MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-				MetadataReference.CreateFromFile(typeof(Statechart<>).Assembly.Location),
-				MetadataReference.CreateFromFile(typeof(T).Assembly.Location),
-			};
-#if NETSTANDARD
-			var location = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-			var netstandard = Path.Combine(location, "netstandard.dll");
-			if (File.Exists(netstandard))
-				references.Add(MetadataReference.CreateFromFile(netstandard));
-#endif
-			var entry = Assembly.GetEntryAssembly();
-			if (entry != null)
-				references.AddRange(
-					entry.GetReferencedAssemblies()
-						.Select(o => MetadataReference.CreateFromFile(Assembly.Load(o).Location))
-					);
 			var compilation = CSharpCompilation.Create(name)
 				.WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
-				.AddReferences(references)
+				.AddReferences(RoslynHelper.GetReferences<T>())
 				.AddSyntaxTrees(CSharpSyntaxTree.ParseText(code));
 
 			EmitResult emitResult;
@@ -303,17 +309,14 @@ public class StatechartConfig
 			if (!emitResult.Success)
 				throw new AggregateException("Compilation Error", emitResult.Diagnostics
 					.Select(o => new InvalidOperationException(o.ToString())));
-			asm = Factory.TryLoadAssembly(filepath, true);
-			if (asm == null)
-				throw new InvalidOperationException($"Cannot create / load assembly {filepath}");
+
+			asm = Factory.LoadAssembly(filepath);
 		}
 
-		var factoryType = asm.GetType(className);
-		if (factoryType == null)
-			throw new InvalidOperationException($"Cannot find class {className}.");
+		var factoryType = asm.GetType(className) ?? throw new InvalidOperationException($"Cannot find class {className}.");
 		string methodName = GetMethodName(Name, methodPrefix ?? "Create");
 		var method = factoryType.GetMethod(methodName);
-		if (method == null)
+		if (method is null)
 			throw new InvalidOperationException($"Cannot find method {methodName}.");
 
 		var arg = Expression.Parameter(typeof(ITokenScope));
@@ -324,10 +327,15 @@ public class StatechartConfig
 
 		static string GetHash(string text)
 		{
+			var name = Assembly.GetEntryAssembly()?.FullName ?? "<>";
+			var n1 = Encoding.UTF8.GetByteCount(name);
+			var n2 = Encoding.UTF8.GetByteCount(text);
+			var bytes = new byte[n1 + n2];
+			Encoding.UTF8.GetBytes(name, 0, name.Length, bytes, 0);
+			Encoding.UTF8.GetBytes(text, 0, text.Length, bytes, n1);
 			using var hasher = System.Security.Cryptography.SHA256.Create();
-			byte[] bytes = Encoding.Unicode.GetBytes(text);
 			var hash = hasher.ComputeHash(bytes, 0, bytes.Length);
-			return Strings.ToHexString(hash);
+			return SixBitsCoder.Encode5(hash);
 		}
 	}
 
@@ -335,78 +343,4 @@ public class StatechartConfig
 
 	private static string A(string value, string objName) => StateConfig.A(value, objName);
 	private static string S(string value) => StateConfig.S(value);
-
-	public static StatechartConfig? FromXml(XmlLiteNode node)
-	{
-		if (node == null || node.IsEmpty)
-			return null;
-
-		List<StateConfig> states = new List<StateConfig>();
-		List<TransitionConfig> transitions = new List<TransitionConfig>();
-
-		foreach (var state in node.Where("state"))
-		{
-			List<StatechartConfig>? charts = null;
-			foreach (var xml in state.Where("statechart"))
-			{
-				var chart = FromXml(xml);
-				if (chart != null)
-					(charts ??= new List<StatechartConfig>()).Add(chart);
-			}
-			var name = state["name"];
-			if (name == null)
-				throw new ArgumentOutOfRangeException(nameof(node), state, "Missing state name attribute.");
-			var stateConfig = new StateConfig(
-				name: name,
-				id: state["id"].AsInt32(null),
-				description: state["description"],
-				guard: state["guard"],
-				stateEnter: state["stateEnter"],
-				statePassthrough: state["statePassthrough"],
-				stateEntered: state["stateEntered"],
-				stateExit: state["stateExit"],
-				roles: state["role"]?.Split(',').Select(o => o.Trim()).Where(o => !String.IsNullOrEmpty(o)).ToList(),
-				charts: charts
-				);
-			states.Add(stateConfig);
-
-			foreach (var transition in state.Where("transition"))
-			{
-				if (String.IsNullOrEmpty(transition["destination"]))
-					continue;
-				var destination = transition["destination"] ?? transition["target"];
-				if (destination == null)
-					throw new ArgumentOutOfRangeException(nameof(node), transition, "Missing destination of the transition.");
-				var transitionConfig = new TransitionConfig(
-					id: transition["id"].AsInt32(null),
-					name: transition["name"] ?? transition["event"],
-					description: transition["description"],
-					source: state["name"] ?? state["id"],
-					destination: destination,
-					guard: transition["guard"],
-					action: transition["action"],
-					continues: transition["continues"].AsBoolean(false),
-					roles: transition["role"]?.Split(',').Select(o => o.Trim()).Where(o => !String.IsNullOrEmpty(o)).ToList()
-					);
-				transitions.Add(transitionConfig);
-			}
-		}
-
-		return new StatechartConfig(
-			id: node["id"].AsInt32(null),
-			name: node["name"] ?? node.Name,
-			description: node["description"],
-			onLoad: node["onLoad"],
-			onUpdate: node["onUpdate"],
-			chartStart: node["chartStart"],
-			chartFinish: node["chartFinish"],
-			stateEnter: node["stateEnter"],
-			stateEntered: node["stateEntered"],
-			statePassthrough: node["statePassthrough"],
-			stateExit: node["stateExit"],
-			initialState: node["initialState"],
-			states: states,
-			transitions: transitions,
-			reference: node["reference"] ?? node.Element("reference").Value.TrimToNull());
-	}
 }

@@ -44,7 +44,7 @@ public class StateUsage
 				machine.Charts.First(o => o.Name == "subchart").SetCurrentState(value.Step2);
 			}
 
-			System.Console.WriteLine($": {String.Join(", ", machine.GetActiveStates().GetLeafs().Select(o => o.GetPath(includeChartName: true)))}");
+			System.Console.WriteLine($": {String.Join(", ", machine.GetActiveStates().GetLeaves().Select(o => o.GetPath(includeChartName: true)))}");
 			var actions = machine.GetActiveEvents(value, user).ToList();
 			if (actions.Count == 0)
 			{

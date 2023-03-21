@@ -51,11 +51,11 @@ public sealed class Token
 	public bool IsEmpty => Id == 0;
 
 	/// <summary>
-	/// Determines if the current token is a domain for the specified <paramref name="token"/>.
+	/// Determines if this token is a domain for the specified <paramref name="token"/>.
 	/// </summary>
 	/// <param name="token"></param>
 	/// <returns></returns>
-	public bool Contains(Token? token) => token != null && (token.Domain == this || (token.Domain != Empty && Contains(token.Domain)));
+	public bool Contains(Token? token) => token is not null && (token.Domain == this || (token.Domain != Empty && Contains(token.Domain)));
 
 	/// <summary>
 	/// Returns this token with all domains this token belongs to.
@@ -87,10 +87,10 @@ public sealed class Token
 		if (Object.ReferenceEquals(this, Empty))
 			return "(empty)";
 		var text = new StringBuilder();
-		if (Id != 0)
+		if (Id > 0)
 			text.Append(Id).Append('.');
 		text.Append(Name);
-		if (includeDescription && Description != null)
+		if (includeDescription && Description is not null)
 			text.Append(" - ").Append(Description);
 		return text.ToString();
 	}
@@ -118,7 +118,7 @@ public sealed class Token
 		public Token Domain => Empty;
 
 		public ITokenScope Scope(Token domain) =>
-			domain == null ?
+			domain is null ?
 				throw new ArgumentNullException(nameof(domain)):
 			domain.IsEmpty ?
 				this:
@@ -136,7 +136,7 @@ public sealed class Token
 		{
 			if (id <= 0)
 				throw new ArgumentOutOfRangeException(nameof(id), id, null);
-			if (name != null && (name = name.Trim()).Length == 0)
+			if (name is not null && (name = name.Trim()).Length == 0)
 				name = null;
 			return CreateToken(
 				o => o.Id == id,
@@ -146,7 +146,7 @@ public sealed class Token
 
 		private Token CreateToken(string name, string? description, Token domain)
 		{
-			if (name == null || (name = name.Trim()).Length == 0)
+			if (name is null || (name = name.Trim()).Length == 0)
 				throw new ArgumentNullException(nameof(name));
 			return CreateToken(
 				o => String.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase),
@@ -182,7 +182,7 @@ public sealed class Token
 				{
 					var items = _items;
 					var t = items.FirstOrDefault(predicate);
-					if (t != null)
+					if (t is not null)
 						return t;
 					var tmp = new Token[items.Length + 1];
 					Array.Copy(items, tmp, items.Length);

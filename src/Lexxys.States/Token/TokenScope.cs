@@ -18,7 +18,7 @@ public static class TokenScope
 
 	public static ITokenScope Scope(Token? token)
 	{
-		if (token == null || token.IsEmpty)
+		if (token is null || token.IsEmpty)
 			return Default;
 
 		Token root = token;
@@ -26,7 +26,7 @@ public static class TokenScope
 			root = root.Domain;
 
 		var scope = __tokenScopes.Values.FirstOrDefault(o => o.Contains(root));
-		if (scope == null)
+		if (scope is null)
 			throw new ArgumentOutOfRangeException(nameof(token), token, null);
 		return scope.Scope(token);
 	}

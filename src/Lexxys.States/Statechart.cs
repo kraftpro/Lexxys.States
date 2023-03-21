@@ -10,6 +10,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Lexxys.States;
 
+/// <summary>
+/// Represents a state chart of a state machine for the object of the type of <typeparamref name="T"/>.
+/// </summary>
+/// <typeparam name="T"></typeparam>
 public class Statechart<T>
 {
 	private static ILogger Log => __log ??= Statics.GetLogger<Statechart<T>>();
@@ -18,15 +22,24 @@ public class Statechart<T>
 	private readonly IReadOnlyDictionary<State<T>, IReadOnlyList<Transition<T>>> _transitions;
 	private State<T> _currentState;
 
+	/// <summary>
+	/// Creates a new <see cref="Statechart{T}"/> with the specified list of <paramref name="states"/> and <paramref name="transitions"/>, marked with the specified <paramref name="token"/>
+	/// </summary>
+	/// <param name="token">The state chart marker.</param>
+	/// <param name="states">List of the state chart states.</param>
+	/// <param name="transitions">List of transitions between the states.</param>
+	/// <exception cref="ArgumentNullException"></exception>
+	/// <exception cref="ArgumentOutOfRangeException">The specified <paramref name="token"/> should not be empty.</exception>
+	/// <exception cref="ArgumentException">The initial transition should be the only transition in the list.</exception>
 	public Statechart(Token token, IEnumerable<State<T>> states, IEnumerable<Transition<T>> transitions)
 	{
-		if (token == null)
+		if (token is null)
 			throw new ArgumentNullException(nameof(token));
 		if (token.IsEmpty)
 			throw new ArgumentOutOfRangeException(nameof(token), token, null);
-		if (states == null)
+		if (states is null)
 			throw new ArgumentNullException(nameof(states));
-		if (transitions == null)
+		if (transitions is null)
 			throw new ArgumentNullException(nameof(transitions));
 
 		States = ReadOnly.WrapCopy(states)!;
@@ -60,7 +73,7 @@ public class Statechart<T>
 		get => _currentState;
 		private set
 		{
-			if (value == null)
+			if (value is null)
 				throw new ArgumentNullException(nameof(value));
 			if (!value.IsEmpty && !States.Contains(value))
 				throw new ArgumentOutOfRangeException(nameof(value), value, null);
@@ -88,11 +101,10 @@ public class Statechart<T>
 	/// <summary>
 	/// Returns collection of <see cref="Transition{T}"/>s for the specified <paramref name="state"/>.
 	/// </summary>
-	/// <param name="state"><see cref="State{T}"/> for whitch to get a collection of <see cref="Transition{T}"/>s.</param>
+	/// <param name="state"><see cref="State{T}"/> for witch to get a collection of <see cref="Transition{T}"/>s.</param>
 	/// <returns></returns>
 	public IReadOnlyList<Transition<T>> GetStateTransitions(State<T> state)
 		=> _transitions.TryGetValue(state, out var transitions) ? transitions: Array.Empty<Transition<T>>();
-
 
 	/// <summary>
 	/// Checks whether the <see cref="Statechart{T}"/> has been started.
@@ -131,19 +143,19 @@ public class Statechart<T>
 	public StateActionChain<T> ChartFinish;
 
 	/// <summary>
-	/// Executes before the <see cref="State{T}"/> becomes a current state in the <see cref="Statechart{T}"/>. ([StateEnter] -> StateEntered / StatePassthrough -> StateExit)
+	/// Executes before the <see cref="State{T}"/> becomes a current state in the <see cref="Statechart{T}"/> diagram. (<b>StateEnter</b> -> ... -> StateExit)
 	/// </summary>
 	public StateActionChain<T> StateEnter;
 	/// <summary>
-	/// Executes when the <see cref="State{T}"/> finally becames a current state in the <see cref="Statechart{T}"/>. (StateEnter -> [StateEntered] -> StateExit)
+	/// Executes when the <see cref="State{T}"/> becomes a current state in the <see cref="Statechart{T}"/> diagram. (StateEnter -> <b>StateEntered</b> -> StateExit)
 	/// </summary>
 	public StateActionChain<T> StateEntered;
 	/// <summary>
-	/// Executes when control flows to another <see cref="State{T}"/> by condition. (StateEnter -> [StatePassthrough] -> StateExit)
+	/// Executes when control flows to another <see cref="State{T}"/> by condition. (StateEnter -> <b>StatePassthrough</b> -> StateExit)
 	/// </summary>
 	public StateActionChain<T> StatePassthrough;
 	/// <summary>
-	/// Executes when the <see cref="State{T}"/> object exits the current state condition.
+	/// Executes when the <see cref="State{T}"/> object exits the current state condition. (the sequence: StateEnter -> StatePassthrough -> <b>StateExit</b>)
 	/// </summary>
 	public StateActionChain<T> StateExit;
 
@@ -153,8 +165,8 @@ public class Statechart<T>
 	/// <summary>
 	/// Returns all the statecharts, including this one.
 	/// </summary>
-	public IReadOnlyList<Statechart<T>> Charts => __charts ??= CollectCharts();
-	private IReadOnlyList<Statechart<T>>? __charts;
+	public IReadOnlyList<Statechart<T>> Charts => _charts ??= CollectCharts();
+	private IReadOnlyList<Statechart<T>>? _charts;
 
 	private IReadOnlyList<Statechart<T>> CollectCharts()
 	{
@@ -223,7 +235,7 @@ public class Statechart<T>
 	/// Starts the <see cref="Statechart{T}"/>.
 	/// </summary>
 	/// <param name="value">Object context</param>
-	/// <param name="principal">Security principals</param>
+	/// <param name="principal">Actual security principals</param>
 	public void Start(T value, IPrincipal? principal = null)
 	{
 		Reset();
@@ -237,7 +249,7 @@ public class Statechart<T>
 	/// Starts the <see cref="Statechart{T}"/>.
 	/// </summary>
 	/// <param name="value">Object context</param>
-	/// <param name="principal">Security principals</param>
+	/// <param name="principal">Actual security principals</param>
 	public async Task StartAsync(T value, IPrincipal? principal = null)
 	{
 		Reset();
@@ -249,8 +261,6 @@ public class Statechart<T>
 	/// <summary>
 	/// Resets the <see cref="Statechart{T}"/> to the initial (not started) state.
 	/// </summary>
-	/// <param name="value">Object context</param>
-	/// <param name="principal">Security principals</param>
 	public void Reset()
 	{
 		foreach (var item in Charts)
@@ -274,16 +284,11 @@ public class Statechart<T>
 	}
 
 	/// <summary>
-	/// Asynchroniously invokes <see cref="OnLoad"/> for this state chart and all the sub-charts.
+	/// Asynchronously invokes <see cref="OnLoad"/> for this state chart and all the sub-charts.
 	/// </summary>
 	/// <param name="value">Object the statechart corresponds to.</param>
 	public Task LoadAsync(T value)
 	{
-		//foreach (var item in Charts.Where(o => !o.OnLoad.IsEmpty))
-		//{
-		//	Log.Trace($"{item.Token.FullName()} OnLoadAsync");
-		//	await item.OnLoad.InvokeAsync(value, item, null, null);
-		//}
 		return Task.WhenAll(Charts.Where(o => !o.OnLoad.IsEmpty).Select(o =>
 		{
 			if (Log.IsEnabled(LogType.Trace))
@@ -307,16 +312,11 @@ public class Statechart<T>
 	}
 
 	/// <summary>
-	/// Asynchroniously invokes <see cref="OnUpdate"/> for this state chart and all the sub-charts.
+	/// Asynchronously invokes <see cref="OnUpdate"/> for this state chart and all the sub-charts.
 	/// </summary>
 	/// <param name="value">Object the statechart corresponds to.</param>
 	public Task UpdateAsync(T value)
 	{
-		//foreach (var item in Charts.Where(o => !o.OnUpdate.IsEmpty))
-		//{
-		//	Log.Trace($"{item.Token.FullName()} OnUpdateAsync");
-		//	await item.OnUpdate.InvokeAsync(value, this, null, null);
-		//}
 		return Task.WhenAll(Charts.Where(o => !o.OnUpdate.IsEmpty).Select(o =>
 		{
 			if (Log.IsEnabled(LogType.Trace))
@@ -326,19 +326,19 @@ public class Statechart<T>
 	}
 
 	/// <summary>
-	/// Executes the transition event <see cref="TransitionEvent{T}"/>.  Returns <see cref="true"/> if the state was chaged.
+	/// Executes the transition event <see cref="TransitionEvent{T}"/>.  Returns true if the state was changed.
 	/// </summary>
 	/// <param name="event">The transition event</param>
 	/// <param name="value">Entity object</param>
-	/// <param name="principal">Permissions</param>
+	/// <param name="principal">Actual security principals</param>
 	/// <returns>True if the state was changes</returns>
 	/// <exception cref="ArgumentNullException"></exception>
 	/// <exception cref="ArgumentOutOfRangeException"></exception>
 	public bool OnEvent(TransitionEvent<T> @event, T value, IPrincipal? principal = null)
 	{
-		if (@event == null)
+		if (@event is null)
 			throw new ArgumentNullException(nameof(@event));
-		if (value == null)
+		if (value is null)
 			throw new ArgumentNullException(nameof(value));
 
 		if (@event.Chart != this)
@@ -357,19 +357,19 @@ public class Statechart<T>
 	}
 
 	/// <summary>
-	/// Asynchroniously executes the transition event <see cref="TransitionEvent{T}"/>.  Returns <see cref="true"/> if the state was chaged.
+	/// Asynchronously executes the transition event <see cref="TransitionEvent{T}"/>.  Returns <see cref="true"/> if the state was changed.
 	/// </summary>
 	/// <param name="event">The transition event</param>
 	/// <param name="value">Entity object</param>
-	/// <param name="principal">Permissions</param>
+	/// <param name="principal">Actual security principals</param>
 	/// <returns>True if the state was changes</returns>
 	/// <exception cref="ArgumentNullException"></exception>
 	/// <exception cref="ArgumentOutOfRangeException"></exception>
 	public async Task<bool> OnEventAsync(TransitionEvent<T> @event, T value, IPrincipal? principal = null)
 	{
-		if (@event == null)
+		if (@event is null)
 			throw new ArgumentNullException(nameof(@event));
-		if (value == null)
+		if (value is null)
 			throw new ArgumentNullException(nameof(value));
 
 		if (@event.Chart != this)
@@ -384,12 +384,25 @@ public class Statechart<T>
 		return true;
 	}
 
+	/// <summary>
+	/// Collects a list of <see cref="TransitionEvent{T}"/>s applicable to the <see cref="Statechart{T}"/> in the current state.
+	/// </summary>
+	/// <param name="value">Object value</param>
+	/// <param name="principal">Actual security principals</param>
+	/// <returns></returns>
 	public IEnumerable<TransitionEvent<T>> GetActiveEvents(T value, IPrincipal? principal = null)
 		=> GetActiveStates()
 			.SelectMany(o => o.Chart.GetStateTransitions(o.State)
 				.Where(t => (o.State.IsFinished || !t.Event.IsEmpty) && t.CanMoveAlong(value, this, principal))
 				.Select(t => new TransitionEvent<T>(o.Chart, t)));
 
+	/// <summary>
+	/// Asynchronously collects a list of <see cref="TransitionEvent{T}"/>s applicable to the <see cref="Statechart{T}"/> in the current state.
+	/// </summary>
+	/// <param name="value">Object value</param>
+	/// <param name="principal">Actual security principals</param>
+	/// <param name="cancellation">The cancelation token</param>
+	/// <returns></returns>
 	public async IAsyncEnumerable<TransitionEvent<T>> GetActiveEventsAsync(T value, IPrincipal? principal = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
 	{
 		foreach (var item in GetActiveStates())
@@ -404,6 +417,10 @@ public class Statechart<T>
 		}
 	}
 
+	/// <summary>
+	/// Collects the active states for this state chart and all the sub-charts.
+	/// </summary>
+	/// <returns></returns>
 	public StatesChain<T> GetActiveStates() => CollectTree(new StatesChain<T>(), null);
 
 	public override string ToString()
@@ -418,7 +435,7 @@ public class Statechart<T>
 			text.Append('(').Append(CurrentState.Id)
 				.Append(' ').Append(CurrentState.Name).Append(')')
 				.Append(IsFinished ? " finished": " in progress");
-		if (Description != null)
+		if (Description is not null)
 			text.Append(" - ").Append(Description);
 		return text.ToString();
 	}
@@ -434,7 +451,7 @@ public class Statechart<T>
 			if (item.OnEvent(@event, value, principal))
 			{
 				var transition = FindAutoTransition(value, principal);
-				if (transition != null)
+				if (transition is not null)
 					Continue(transition, value, principal);
 				return true;
 			}
@@ -452,7 +469,7 @@ public class Statechart<T>
 		Transition<T>? transition = null;
 		foreach (var item in all.Where(o => o.Event.IsEmpty && o.CanMoveAlong(context, this, principal)))
 		{
-			if (transition == null)
+			if (transition is null)
 				transition = item;
 			else
 				throw new InvalidOperationException($"Multiple transitions found for state {Name}.");
@@ -510,8 +527,6 @@ public class Statechart<T>
 	{
 		if (Log.IsEnabled(LogType.Trace))
 			Log.Trace($"{Token.FullName()}: {nameof(OnStart)}");
-		if (ChartStart.IsEmpty)
-			return;
 		ChartStart.Invoke(context, this, null, null);
 	}
 
@@ -519,8 +534,6 @@ public class Statechart<T>
 	{
 		if (Log.IsEnabled(LogType.Trace))
 			Log.Trace($"{Token.FullName()}: {nameof(OnFinish)}");
-		if (ChartFinish.IsEmpty)
-			return;
 		ChartFinish.Invoke(context, this, null, null);
 	}
 
@@ -565,7 +578,7 @@ public class Statechart<T>
 			if (await item.OnEventAsync(@event, value, principal).ConfigureAwait(false))
 			{
 				var transition = await FindAutoTransitionAsync(value, principal).ConfigureAwait(false);
-				if (transition != null)
+				if (transition is not null)
 					await ContinueAsync(transition, value, principal).ConfigureAwait(false);
 				return true;
 			}
@@ -583,7 +596,7 @@ public class Statechart<T>
 		{
 			if (item.Event.IsEmpty && await item.CanMoveAlongAsync(context, this, principal).ConfigureAwait(false))
 			{
-				if (transition == null)
+				if (transition is null)
 					transition = item;
 				else
 					throw new InvalidOperationException($"More than one transitions found for state {Name}.");

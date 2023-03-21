@@ -14,7 +14,7 @@ namespace Lexxys.States.Tests
 	{
 		public static StatechartConfig LoadLoginConfig()
 		{
-			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.Login");
+			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.statechart[@name=Login]");
 			return config.Value;
 		}
 
@@ -133,10 +133,12 @@ namespace Lexxys.States.Tests
 
 		static readonly string LoginTextConfig = @"
 statecharts
-	%{Name} name
-	%{Name}(**)/state		name
-	%{Name}(**)/state/transition	name destination
-	{Name}
+	%statechart							name id
+	%statechart(**)/state				name id
+	%statechart(**)/state/statechart	name id
+	%statechart(**)/state/transition	name destination
+
+	statechart {Name}
 		:description	Sample {Name} statechart
 		:initialState	Initialized
 		state Initialized
@@ -181,12 +183,14 @@ statecharts
 
 		static readonly string Login2TextConfig = @"
 statecharts
-	%{Name} name
-	%{Name}(**)/state				name
-	%{Name}(**)/state/statechart	name
-	%{Name}(**)/state/transition	name destination
-	{Name}
+	%statechart							name id
+	%statechart(**)/state				name id
+	%statechart(**)/state/statechart	name id
+	%statechart(**)/state/transition	name destination
+
+	statechart {Name}
 		:description	Sample {Name} statechart
+		:initialState	Initialized
 		state Initialized
 			:id				1
 			:description	Initial login state

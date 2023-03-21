@@ -12,13 +12,6 @@ namespace Lexxys.States.Tests
 	public class StatechartTest
 	{
 
-		static StatechartTest()
-		{
-			Statics.Register(o => o
-				.AddConfigService()
-				.AddLoggingService());
-		}
-
 		[TestMethod]
 		public void CreateTest()
 		{

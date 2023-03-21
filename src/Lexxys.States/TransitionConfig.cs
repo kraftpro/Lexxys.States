@@ -5,48 +5,55 @@ using System.Linq;
 
 namespace Lexxys.States;
 
+#pragma warning disable CA1819
+
 public class TransitionConfig
 {
 	public const string TokenDomain = "^";
 
-	public int? Id { get; }
-	public string? Name { get; }
-	public string? Description { get; }
-	public string? Source { get; }
-	public string Destination { get; }
-	public string? Guard { get; }
-	public string? Action { get; }
-	public bool Continues { get; }
-	public IReadOnlyCollection<string>? Roles { get; }
+	public int? Id { get; init; }
+	public string? Name { get; init; }
+	public string? Description { get; init; }
+	public string? Source { get; set; }
+	public string Destination { get; init; }
+	public string? Guard { get; init; }
+	public string? Action { get; init; }
+	public bool Continues { get; init; }
+	public string[]? Role { get; init; }
+
+	public TransitionConfig()
+	{
+		Destination = String.Empty;
+	}
 
 	public TransitionConfig(string destination)
 	{
 		Destination = destination;
 	}
 
-	public TransitionConfig(int? id, string? name, string? description, string? source, string destination, string? guard, string? action, bool continues, IReadOnlyCollection<string>? roles)
+	public TransitionConfig(string destination, int? id = null, string? name = null, string? description = null, string? source = null, string? guard = null, string? action = null, bool continues = false, IReadOnlyCollection<string>? roles = null)
 	{
-		if (destination == null || (destination = destination.Trim()).Length == 0)
+		if (destination is null || (destination = destination.Trim()).Length == 0)
 			throw new ArgumentNullException(nameof(destination));
-		(Id, Name) = name == null ? (id, name): FixName(id, name);
+		(Id, Name) = name is null ? (id, name): FixName(id, name);
 		Description = description;
 		Source = source;
 		Destination = destination;
 		Guard = guard;
 		Action = action;
 		Continues = continues;
-		Roles = roles;
+		Role = roles?.ToArray();
 	}
 
 	internal Transition<T> Create<T>(ITokenScope scope, IReadOnlyCollection<State<T>> states, Func<string, IStateAction<T>?> actionBuilder, Func<string, IStateCondition<T>?> conditionBuilder)
 	{
-		if (scope == null)
+		if (scope is null)
 			throw new ArgumentNullException(nameof(scope));
 		if (states is null)
 			throw new ArgumentNullException(nameof(states));
-		if (actionBuilder == null)
+		if (actionBuilder is null)
 			throw new ArgumentNullException(nameof(actionBuilder));
-		if (conditionBuilder == null)
+		if (conditionBuilder is null)
 			throw new ArgumentNullException(nameof(conditionBuilder));
 
 		var transition = new Transition<T>(
@@ -56,7 +63,7 @@ public class TransitionConfig
 			continues: Continues,
 			action: String.IsNullOrEmpty(Action) ? null: actionBuilder(Action!),
 			guard: String.IsNullOrEmpty(Guard) ? null: conditionBuilder(Guard!),
-			roles: Roles);
+			roles: Role);
 		return transition;
 	}
 
@@ -67,9 +74,8 @@ public class TransitionConfig
 	internal static State<T> FindState<T>(string reference, IReadOnlyCollection<State<T>> states)
 	{
 		int? intReference = int.TryParse(reference, out var id) ? id: null;
-		var state = states.FirstOrDefault(o => String.Equals(o.Name, reference, StringComparison.OrdinalIgnoreCase) || o.Token.Id == intReference);
-		if (state == null)
-			throw new InvalidOperationException($"Cannot find state \"{reference}\".");
+		var state = states.FirstOrDefault(o => String.Equals(o.Name, reference, StringComparison.OrdinalIgnoreCase) || o.Token.Id == intReference)
+			?? throw new InvalidOperationException($"Cannot find state \"{reference}\".");
 		return state;
 	}
 
@@ -79,7 +85,7 @@ public class TransitionConfig
 		var destination = FindState(Destination, objName, stateNames);
 
 		writer.WriteLine(TrimEnd(
-			$"{indent}var {varName} = new Transition<{objName}>({source}, {destination}, {T("t", Id, Name, Description)}, {(Continues ? "true" : "false")}, {A(Action, objName)}, {P(Guard, objName)}, {RR(Roles)}",
+			$"{indent}var {varName} = new Transition<{objName}>({source}, {destination}, {T("t", Id, Name, Description)}, {(Continues ? "true" : "false")}, {A(Action, objName)}, {P(Guard, objName)}, {RR(Role)}",
 			", null, false, null, null, null") + ");");
 	}
 
@@ -88,15 +94,15 @@ public class TransitionConfig
 		if (IsEmptyReference(reference))
 			return $"State<{objName}>.Empty";
 		int? intReference = int.TryParse(reference, out var id) ? id : null;
-		var state = states.FirstOrDefault(o => String.Equals(o.Key.Name, reference, StringComparison.OrdinalIgnoreCase) || (intReference != null && o.Key.Id == intReference));
-		return state.Value ?? $"\"Cannot find state variable for '{reference}'.\"";
+		var state = states.FirstOrDefault(o => String.Equals(o.Key.Name, reference, StringComparison.OrdinalIgnoreCase) || (intReference is not null && o.Key.Id == intReference));
+		return state.Value ?? throw new InvalidOperationException($"\"Cannot find state variable for '{reference}'.\"");
 	}
 
 	static Token CreateToken(ITokenScope scope, int? id, string? name, string? description)
 	{
-		if (id != null)
+		if (id is not null)
 			return scope.Token(id.GetValueOrDefault(), name, description);
-		if (name != null)
+		if (name is not null)
 			return scope.Token(name, description);
 		return Token.Empty;
 	}

@@ -36,13 +36,13 @@ namespace Lexxys.States.Tests
 		}
 
 		[TestMethod()]
-		public void GenerateSubchatsCodeTest()
+		public void GenerateSubchartsCodeTest()
 		{
-			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
+			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.statechart[@name=Login2]").Value;
 			var text = new StringBuilder();
 			using (var writer = new StringWriter(text))
 			{
-				writer.WriteLine("\t\t// Generated SubchatsCodeTest");
+				writer.WriteLine("\t\t// Generated SubchartsCodeTest");
 				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", indent: "\t\t", nullable: true);
 			}
 			var code = text.ToString();
@@ -52,7 +52,7 @@ namespace Lexxys.States.Tests
 		[TestMethod]
 		public void CanCompileGeneratedCode()
 		{
-			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
+			var chart = Config.Current.GetValue<StatechartConfig>($"statecharts.statechart[@name=Login2]").Value;
 			var text = new StringBuilder();
 			using (var writer = new StringWriter(text))
 			{
@@ -62,10 +62,10 @@ namespace Lexxys.States.Tests
 				writer.WriteLine("#nullable enable");
 				//writer.WriteLine("namespace Lexxys.States.Tests");
 				//writer.WriteLine("{");
-				writer.WriteLine("  public static partial class StateChartFactory");
-				writer.WriteLine("  {");
-				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", indent: "    ", tab: "  ", nullable: true);
-				writer.WriteLine("  }");
+				writer.WriteLine("public static partial class StateChartFactory");
+				writer.WriteLine("{");
+				chart.GenerateCode(writer, "Login2", "CreateStatechart", "public", indent: "  ", tab: "  ", nullable: true);
+				writer.WriteLine("}");
 				//writer.WriteLine("}");
 			}
 			var code = text.ToString();
@@ -116,7 +116,7 @@ namespace Lexxys.States.Tests
 		[TestMethod]
 		public void CanGenerateLambda()
 		{
-			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.Login2").Value;
+			var config = Config.Current.GetValue<StatechartConfig>($"statecharts.statechart[@name=Login2]").Value;
 			var constructor = config.GenerateLambda<Login2>();
 			Assert.IsNotNull(constructor);
 

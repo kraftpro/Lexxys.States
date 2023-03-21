@@ -23,14 +23,17 @@ public class State<T>
 	/// State ID
 	/// </summary>
 	public Token Token { get; }
+
 	/// <summary>
 	/// List of roles allowed to enter this state.
 	/// </summary>
 	public IReadOnlyCollection<string> Roles { get; }
+
 	/// <summary>
 	/// Condition to enter this state.
 	/// </summary>
 	public IStateCondition<T>? Guard { get; }
+
 	/// <summary>
 	/// Statecharts collection running in parralel
 	/// </summary>
@@ -55,37 +58,44 @@ public class State<T>
 	/// State ID from the <see cref="Token"/>
 	/// </summary>
 	public int Id => Token.Id;
+
 	/// <summary>
 	/// State name from the <see cref="Token"/>
 	/// </summary>
 	public string Name => Token.Name;
+
 	/// <summary>
-	/// State desctiption from the <see cref="Token"/>
+	/// State description from the <see cref="Token"/>
 	/// </summary>
 	public string? Description => Token.Description;
+
 	/// <summary>
 	/// Determines if this state is empty.
 	/// </summary>
 	public bool IsEmpty => this == Empty;
+
 	/// <summary>
 	/// Checks that this state doesn't have active (not finished) statecharts.
 	/// </summary>
 	public bool IsFinished => Charts.Count == 0 || Charts.All(o => o.IsFinished);
 
 	#region Events
-	#pragma warning disable CA1051
+#pragma warning disable CA1051
 
 	/// <summary>
-	/// Executes when the state is going to be current.
+	/// Executes when the workflow entering to the current <see cref="State{T}"/>. (the sequence: <b>StateEnter</b> -> ... -> StateExit)
 	/// </summary>
 	public StateActionChain<T> StateEnter;
+	/// <summary>
+	/// Executes when the workflow skips the current <see cref="State{T}"/>. (the sequence: StateEnter -> <b>StatePassthrough</b> -> StateExit)
+	/// </summary>
 	public StateActionChain<T> StatePassthrough;
 	/// <summary>
-	/// Executes when the state became current. (the chain: StateEnter -> [StateEntered] -> StateExit)
+	/// Executes when the workflow entered the current <see cref="State{T}"/>. (the sequence: StateEnter -> <b>StateEntered</b> -> StateExit)
 	/// </summary>
 	public StateActionChain<T> StateEntered;
 	/// <summary>
-	/// Executes when the state state is going to be changed to the current.
+	/// Executes when the workflow leaves the current <see cref="State{T}"/>. (the sequence: StateEnter -> ... -> <b>StateExit</b>)
 	/// </summary>
 	public StateActionChain<T> StateExit;
 
@@ -99,7 +109,7 @@ public class State<T>
 	/// <exception cref="ArgumentNullException"></exception>
 	public void Accept(IStatechartVisitor<T> visitor)
 	{
-		if (visitor == null)
+		if (visitor is null)
 			throw new ArgumentNullException(nameof(visitor));
 		visitor.Visit(this);
 		foreach (var item in Charts)
@@ -112,13 +122,13 @@ public class State<T>
 	{
 		var text = new StringBuilder();
 		text.Append(Token.ToString(false));
-		if (Guard != null)
+		if (Guard is not null)
 			text.Append(" [...]");
 		if (Roles.Count > 0)
 			text.Append(" [").Append(String.Join(",", Roles)).Append(']');
 		if (Charts.Count > 0)
 			text.Append(" {").Append(String.Join(",", Charts.Select(o => o.Name))).Append('}');
-		if (Description != null)
+		if (Description is not null)
 			text.Append(" - ").Append(Description);
 		return text.ToString();
 	}
@@ -127,9 +137,9 @@ public class State<T>
 
 	internal bool CanEnter(T value, Statechart<T> statechart, IPrincipal? principal) => IsInRole(principal) && InvokeGuard(value, statechart);
 
-	private bool IsInRole(IPrincipal? principal) => principal == null || Roles.Count == 0 || principal.IsInRole(Roles);
+	private bool IsInRole(IPrincipal? principal) => principal is null || Roles.Count == 0 || principal.IsInRole(Roles);
 
-	private bool InvokeGuard(T value, Statechart<T> statechart) => Guard == null || Guard.Invoke(value, statechart, this, null);
+	private bool InvokeGuard(T value, Statechart<T> statechart) => Guard is null || Guard.Invoke(value, statechart, this, null);
 
 	internal void OnStateEnter(T value, Statechart<T> statechart, Transition<T> transition)
 	{
@@ -172,7 +182,7 @@ public class State<T>
 		=> IsInRole(principal) ? InvokeGuardAsync(value, statechart): Task.FromResult(false);
 
 	private Task<bool> InvokeGuardAsync(T value, Statechart<T> statechart)
-		=> Guard != null ? Guard.InvokeAsync(value, statechart, this, null): Task.FromResult(true);
+		=> Guard is not null ? Guard.InvokeAsync(value, statechart, this, null): Task.FromResult(true);
 
 	internal Task OnStateEnterAsync(T value, Statechart<T> statechart, Transition<T> transition)
 	{

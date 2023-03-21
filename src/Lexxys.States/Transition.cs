@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +23,7 @@ public class Transition<T>
 
 	public Transition(State<T>? source, State<T> destination, Token? @event = null, bool continues = false, IStateAction<T>? action = null, IStateCondition<T>? guard = null, IReadOnlyCollection<string>? roles = default)
 	{
-		if (destination == null)
+		if (destination is null)
 			throw new ArgumentNullException(nameof(destination));
 		if (destination.IsEmpty)
 			throw new ArgumentOutOfRangeException(nameof(destination), destination, null);
@@ -50,9 +49,9 @@ public class Transition<T>
 		if (!Event.IsEmpty)
 			text.Append(" /").Append(Event.ToString(false));
 
-		if (Guard != null)
+		if (Guard is not null)
 			text.Append(" [...]");
-		if (Event.Description != null)
+		if (Event.Description is not null)
 			text.Append(" - ").Append(Event.Description);
 		return text.ToString();
 	}
@@ -68,9 +67,9 @@ public class Transition<T>
 		Action?.Invoke(value, statechart, Source, this);
 	}
 
-	private bool IsInRole(IPrincipal? principal) => principal == null || Roles.Count == 0 || principal.IsInRole(Roles);
+	private bool IsInRole(IPrincipal? principal) => principal is null || Roles.Count == 0 || principal.IsInRole(Roles);
 
-	private bool InvokeGuard(T value, Statechart<T> statechart) => Guard == null || Guard.Invoke(value, statechart, Source, this);
+	private bool InvokeGuard(T value, Statechart<T> statechart) => Guard is null || Guard.Invoke(value, statechart, Source, this);
 
 	#endregion
 
@@ -85,11 +84,11 @@ public class Transition<T>
 	{
 		if (Log.IsEnabled(LogType.Trace))
 			Log.Trace($"{Event.FullName()}: {nameof(OnMoveAlongAsync)} {Source.Name} -> {Destination.Name}");
-		return Action != null ? Action.InvokeAsync(value, statechart, Source, this): Task.CompletedTask;
+		return Action is not null ? Action.InvokeAsync(value, statechart, Source, this): Task.CompletedTask;
 	}
 
 	private Task<bool> InvokeGuardAsync(T value, Statechart<T> statechart)
-		=> Guard != null ? Guard.InvokeAsync(value, statechart, Source, this): Task.FromResult(true);
+		=> Guard is not null ? Guard.InvokeAsync(value, statechart, Source, this): Task.FromResult(true);
 
 	#endregion
 }

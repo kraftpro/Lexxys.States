@@ -9,39 +9,54 @@ namespace Lexxys.States;
 
 public readonly struct StateActionChain<T>
 {
-	private readonly IStateAction<T>[]? _actions;
+	//private readonly IStateAction<T>[]? _actions;
+	private readonly object? _action;
 
-	private StateActionChain(params IStateAction<T>[] actions)
-		=> _actions = actions;
+	private StateActionChain(IStateAction<T>? actions)
+		=> _action = actions;
+
+	private StateActionChain(params IStateAction<T>[]? actions)
+		=> _action = actions is null || actions.Length == 0 ? null: actions.Length == 1 ? actions[0]: actions;
 
 	public StateActionChain<T> Add(IStateAction<T>? action)
 	{
-		if (action == null)
+		if (action is null || _action == action)
 			return this;
-		if (_actions == null)
+		if (_action is null)
 			return new StateActionChain<T>(action);
-		if (Array.IndexOf(_actions, action) >= 0)
+		if (_action is IStateAction<T>)
+			return new StateActionChain<T>((IStateAction<T>)_action, action);
+
+		var array = (IStateAction<T>[])_action;
+		if (Array.IndexOf(array, action) >= 0)
 			return this;
-		var actions = new IStateAction<T>[_actions.Length + 1];
-		Array.Copy(_actions, actions, _actions.Length);
-		actions[_actions.Length] = action;
+		var actions = new IStateAction<T>[array.Length + 1];
+		Array.Copy(array, actions, array.Length);
+		actions[array.Length] = action;
 		return new StateActionChain<T>(actions);
 	}
 
-	public bool IsEmpty => _actions == null || _actions.Length == 0;
+	public bool IsEmpty => _action is null;
 
 	public StateActionChain<T> Remove(IStateAction<T>? action)
 	{
-		if (action == null || _actions == null)
+		if (action is null || _action is null)
 			return this;
-		int i = Array.IndexOf(_actions, action);
+		if (_action == action)
+			return default;
+
+		if (_action is IStateAction<T>)
+			return this;
+
+		var array = (IStateAction<T>[])_action;
+		int i = Array.IndexOf(array, action);
 		if (i < 0)
 			return this;
-		if (_actions.Length == 1)
-			return default;
-		var actions = new IStateAction<T>[_actions.Length - 1];
-		Array.Copy(_actions, 0, actions, 0, i);
-		Array.Copy(_actions, i + 1, actions, i, actions.Length - i);
+		if (array.Length == 2)
+			return new StateActionChain<T>(array[1 - i]);
+		var actions = new IStateAction<T>[array.Length - 1];
+		Array.Copy(array, 0, actions, 0, i);
+		Array.Copy(array, i + 1, actions, i, actions.Length - i);
 		return new StateActionChain<T>(actions);
 	}
 
@@ -51,27 +66,36 @@ public readonly struct StateActionChain<T>
 
 	public StateActionChain<T> Add((Action<T, Statechart<T>, State<T>?, Transition<T>?> Sync, Func<T, Statechart<T>, State<T>?, Transition<T>?, Task> Async) action) => Add(StateAction.Create(action.Sync, action.Async));
 
-	public StateActionChain<T> Add(Action<T, Statechart<T>> action) => Add(StateAction.Create<T>((o, c, s, t) => action(o, c)));
+	public StateActionChain<T> Add(Action<T, Statechart<T>> action) => Add(StateAction.Create<T>((o, c, _,_) => action(o, c)));
 
-	public StateActionChain<T> Add(Func<T, Statechart<T>, Task> action) => Add(StateAction.Create<T>(action));
+	public StateActionChain<T> Add(Func<T, Statechart<T>, Task> action) => Add(StateAction.Create(action));
 
-	public StateActionChain<T> Add((Action<T, Statechart<T>> Sync, Func<T, Statechart<T>, Task> Async) action) => Add(StateAction.Create<T>(action.Sync, action.Async));
+	public StateActionChain<T> Add((Action<T, Statechart<T>> Sync, Func<T, Statechart<T>, Task> Async) action) => Add(StateAction.Create(action.Sync, action.Async));
 
 	public void Invoke(T value, Statechart<T> chart, State<T>? state, Transition<T>? transition)
 	{
-		if (_actions == null)
+		if (_action is null)
 			return;
-		for (int i = 0; i < _actions.Length; ++i)
+
+		if (_action is IStateAction<T>)
 		{
-			_actions[i].Invoke(value, chart, state, transition);
+			((IStateAction<T>)_action).Invoke(value, chart, state, transition);
+			return;
+		}
+
+		var array = (IStateAction<T>[])_action;
+		for (int i = 0; i < array.Length; ++i)
+		{
+			array[i].Invoke(value, chart, state, transition);
 		}
 	}
 
 	public Task InvokeAsync(T value, Statechart<T> chart, State<T>? state, Transition<T>? transition)
 	{
-		return IsEmpty ?
-			Task.CompletedTask:
-			Task.WhenAll(_actions!.Select(o => o.InvokeAsync(value, chart, state, transition)));
+		return _action is null ? Task.CompletedTask:
+			_action is IStateAction<T> ?
+				((IStateAction<T>)_action).InvokeAsync(value, chart, state, transition):
+				Task.WhenAll(((IStateAction<T>[])_action).Select(o => o.InvokeAsync(value, chart, state, transition)));
 	}
 
 	public static StateActionChain<T> operator +(StateActionChain<T> chain, IStateAction<T>? item) => chain.Add(item);

@@ -352,3 +352,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/test/Lexxys.States.Tests/StatechartTest.cs
+/test/Lexxys.States.Tests/StatechartGenerateTests.cs
