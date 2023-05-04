@@ -21,7 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Lexxys\src\Lexxys\Lexxys.csproj" />
+    <ProjectReference Include="..\..\extern\Lexxys\src\Lexxis.Logging\Lexxys.Logging.csproj" />
+    <ProjectReference Include="..\..\extern\Lexxys\src\Lexxys\Lexxys.csproj" />
   </ItemGroup>
 
 </Project>
