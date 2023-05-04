@@ -1,0 +1,4 @@
+[submodule "extern/Lexxys"]
+	path = extern/Lexxys
+	url = https://github.com/kraftpro/Lexxys.git
+	branch = feature/next
